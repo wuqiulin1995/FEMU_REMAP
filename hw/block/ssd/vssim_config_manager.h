@@ -10,6 +10,17 @@
 
 #include "common.h"
 
+
+
+//add by hao from nvme driver
+struct t10_pi_tuple {
+	uint16_t guard_tag;	/* Checksum */
+	uint16_t app_tag;		/* Opaque storage */
+	uint32_t ref_tag;		/* Target LBA or indirect LBA */
+};
+
+
+
 struct ssdconf {
     /* SSD Configuration */
     int SECTOR_SIZE;

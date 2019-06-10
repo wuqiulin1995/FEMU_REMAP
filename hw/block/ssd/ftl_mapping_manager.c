@@ -15,6 +15,10 @@
 int64_t* mapping_table;
 void* block_table_start;
 
+#ifdef FTL_META_TRANS
+	FILE* fp_meta;
+#endif
+
 void INIT_MAPPING_TABLE(struct ssdstate *ssd)
 {
     struct ssdconf *sc = &(ssd->ssdparams);
@@ -223,10 +227,15 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
     }
 
     ssd->metadata = fopen(ssd->meta_fname, "w+"); // Open the metadata file
+
     if (!ssd->metadata) {
         error_report("nvme: femu_oc_init_meta: fopen(%s)\n", ssd->meta_fname);
         return;
     }
+
+#ifdef FTL_META_TRANS
+	fp_meta = fopen("./data/meta.txt","a");
+#endif   
 
     if (fstat(fileno(ssd->metadata), &buf)) {                //hao:fileno返回metadata对应的文件描述符，并copy到buf
         error_report("nvme: femu_oc_init_meta: fstat(%s)\n", ssd->meta_fname);
@@ -281,6 +290,12 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
  {
  
 	struct ssdconf *sc = &(ssd->ssdparams);
+
+
+    struct t10_pi_tuple *t10;               //add by hao
+	void * hao_meta_buf;                    //add by hao
+ 
+ 
  
 #if 1                                        //hao: for debug
 	 FILE *meta_fp = ssd->metadata;
@@ -288,9 +303,13 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
 	 size_t ret;
 #endif
 
-
+     //memcpy(hao_meta_buf, meta, sc->sos);
 	 memcpy(ssd->meta_buf, meta, sc->sos);
 	 //return 0;                                     //add by hao
+
+
+    // t10 = (struct t10_pi_tuple*) hao_meta_buf;      //add by hao
+	// fprintf(fp_meta,"%d\t%d\t%d\n", t10->guard_tag, t10->app_tag, t10->ref_tag);
  
 #if 1
 	 ret = fwrite(meta, tgt_oob_len, 1, meta_fp);
@@ -303,6 +322,8 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
 		 perror("femu_oc_meta_write: fflush");
 		 return -1;
 	 }
+    t10 = (struct t10_pi_tuple *) meta;      //add by hao
+	fprintf(fp_meta,"%d\t%d\t%d\n", t10->guard_tag, t10->app_tag, t10->ref_tag);
  
 	 return 0;
 #endif
