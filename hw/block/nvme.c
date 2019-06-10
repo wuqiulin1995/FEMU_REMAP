@@ -959,6 +959,7 @@ uint16_t nvme_rw_check_req(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
             offsetof(NvmeRwCmd, nlb), nlb, ns->id);
         return NVME_INVALID_FIELD | NVME_DNR;
     }
+    // comment out by hao
     if (meta_size) {
         nvme_set_error_page(n, req->sq->sqid, cmd->cid, NVME_INVALID_FIELD,
             offsetof(NvmeRwCmd, control), ctrl, ns->id);
@@ -1011,13 +1012,13 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     struct ssdstate *ssd = &(n->ssd);
 
     struct ssdconf *sc = &(ssd->ssdparams);
-    uint32_t n_pages = data_size / data_shift;
+    uint32_t n_pages = data_size / 4096;
 
     req->data_offset = data_offset;
     req->is_write = (rw->opcode == NVME_CMD_WRITE) ? 1 : 0;
 
     is_write = (rw->opcode == NVME_CMD_WRITE) ? 1 : 0;
-
+    //printf("hao: nvme_rw\n");
 
     msl = g_malloc0(sc->sos * 64);   //hao:① for metadata alloc space, assume a request max contain 256 pages
     if (!msl) {
@@ -1025,9 +1026,9 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
         return -ENOMEM;
     }
 
-
+    //printf("hao: nvme_rw_check %d %d %d %d %d\n", slba, elba, nlb, data_size, meta_size);
     err = nvme_rw_check_req(n, ns, cmd, req, slba, elba, nlb, ctrl, data_size,
-            meta_size);
+            0);
     if (err) {
         printf("femu_oc_rw: failed nvme_rw_check\n");
         goto fail_free_msl;
@@ -1036,9 +1037,18 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
 
     /*hao
 	*/
-	
-    if (meta && is_write)                                           
+
+    // if (meta) {
+    //     printf("hao:test meta pointer\n");
+    // }
+	// if (!meta) {
+    //     printf("hao:test meta pointerxxxxxxxxx\n");
+    // }
+    if (meta && is_write) {
         nvme_addr_read(n, meta, (void *)msl, n_pages * sc->sos);  
+       // printf("hao:write1111111111111111111111111\n");
+    }                                     
+
 
     for (i = 0; i < n_pages; i++) {	
 		if (is_write) {
@@ -1057,11 +1067,16 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
 					err = NVME_INVALID_FIELD | NVME_DNR;
                     goto fail_free_msl;
 				}
-                nvme_addr_write(n, meta, (void *)msl, n_pages * sc->sos);
 			}
 		}
     }
 
+    if (meta && (!is_write)) {
+        nvme_addr_write(n, meta, (void *)msl, n_pages * sc->sos);
+        //printf("hao:readaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
+    }   
+
+    //printf("hao:nvme_rw step2\n");
     g_free(msl);
 
     if (nvme_map_prp(&req->qsg, &req->iov, prp1, prp2, data_size, n)) {
@@ -1069,7 +1084,7 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
                 offsetof(NvmeRwCmd, prp1), 0, ns->id);
         return NVME_INVALID_FIELD | NVME_DNR;
     }
-
+    //printf("hao:nvme_rw step3\n");
     assert((nlb << data_shift) == req->qsg.size);
 
     req->slba = slba;
@@ -1091,7 +1106,7 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
         if (n->femu_mode == FEMU_BLACKBOX_MODE)
             req->expire_time += SSD_READ(ssd, data_size >> 9 , data_offset >> 9) - overhead;
     }
-
+    //printf("hao:nvme_rw step4\n");
     //return NVME_SUCCESS;
     return nvme_heap_storage_rw(n, ns, cmd, req);
 
@@ -2933,6 +2948,13 @@ static int nvme_check_constraints(NvmeCtrl *n)
         (n->oacs & ~(NVME_OACS_FORMAT)) ||
         (n->oncs & ~(NVME_ONCS_COMPARE | NVME_ONCS_WRITE_UNCORR |
             NVME_ONCS_DSM | NVME_ONCS_WRITE_ZEROS))) {
+        printf("hao:nvme check constraints1: %d\n", n->meta);
+        printf("hao:nvme check constraints2: %d\n", n->dps );
+        printf("hao:nvme check constraints3: %d\n", n->dpc);
+        printf("hao:nvme check constraints4: %d\n", n->dps & DPS_TYPE_MASK && !((n->dpc & NVME_ID_NS_DPC_TYPE_MASK) &
+            (1 << ((n->dps & DPS_TYPE_MASK) - 1))));
+        printf("hao:nvme check constraints5: %d\n", !n->extended && n->meta && !(NVME_ID_NS_MC_SEPARATE(n->mc)));
+
         return -1;
     }
     return 0;
@@ -2974,9 +2996,10 @@ static void nvme_init_namespaces(NvmeCtrl *n)
 
         for (j = 0; j < n->nlbaf; j++) {
 			id_ns->lbaf[j].ds = 12;
-			id_ns->lbaf[j].ms = 32;
+			id_ns->lbaf[j].ms = 8;
 		}
-
+		id_ns->lbaf[0].ds = 12;
+		id_ns->lbaf[0].ms = 8;
 
         lba_index = NVME_ID_NS_FLBAS_INDEX(ns->id_ns.flbas);
         blks = n->ns_size / ((1 << id_ns->lbaf[lba_index].ds));
@@ -3111,6 +3134,8 @@ static int nvme_init(PCIDevice *pci_dev)
     NvmeCtrl *n = NVME(pci_dev);
     int64_t bs_size;
 
+    printf("hao:nvme init\n");
+  
     blkconf_serial(&n->conf, &n->serial);
     if (nvme_check_constraints(n)) {
         return -1;
@@ -3200,10 +3225,10 @@ static Property nvme_props[] = {
     DEFINE_PROP_UINT8("nlbaf", NvmeCtrl, nlbaf, 5),
     DEFINE_PROP_UINT8("lba_index", NvmeCtrl, lba_index, 3),
     DEFINE_PROP_UINT8("extended", NvmeCtrl, extended, 0),
-    DEFINE_PROP_UINT8("dpc", NvmeCtrl, dpc, 0x0),
-    DEFINE_PROP_UINT8("dps", NvmeCtrl, dps, 0x0),
-    DEFINE_PROP_UINT8("mc", NvmeCtrl, mc, 0),
-    DEFINE_PROP_UINT8("meta", NvmeCtrl, meta, 0),
+    DEFINE_PROP_UINT8("dpc", NvmeCtrl, dpc, 12),
+    DEFINE_PROP_UINT8("dps", NvmeCtrl, dps, 11),
+    DEFINE_PROP_UINT8("mc", NvmeCtrl, mc, 2),
+    DEFINE_PROP_UINT8("meta", NvmeCtrl, meta, 8),
     DEFINE_PROP_UINT32("cmbsz", NvmeCtrl, cmbsz, 0),
     DEFINE_PROP_UINT32("cmbloc", NvmeCtrl, cmbloc, 0),
     DEFINE_PROP_UINT16("oacs", NvmeCtrl, oacs, NVME_OACS_FORMAT),

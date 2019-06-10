@@ -19,6 +19,9 @@ void INIT_SSD_CONFIG(struct ssdstate *ssd)
 	
 	szCommand = (char*)malloc(1024);
 	memset(szCommand, 0x00, 1024);
+
+	sc->sos = 8;                            //add by hao
+
 	if(pfData!=NULL)
 	{
 		while(fscanf(pfData, "%s", szCommand)!=EOF)

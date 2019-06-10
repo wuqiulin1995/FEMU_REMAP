@@ -216,7 +216,7 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
 			return;
 	    }
 
-        strncpy(ssd->meta_fname, "meta.qemu\0", 10);
+        strncpy(ssd->meta_fname, "meta.txt\0", 10);
         printf("Coperd,femu_oc_init_meta, setting meta_fname=%s\n", ssd->meta_fname);
     } else {
         ssd->meta_auto_gen = 0;
