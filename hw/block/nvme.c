@@ -2996,7 +2996,7 @@ static void nvme_init_namespaces(NvmeCtrl *n)
 
         for (j = 0; j < n->nlbaf; j++) {
 			id_ns->lbaf[j].ds = 12;
-			id_ns->lbaf[j].ms = 8;
+			id_ns->lbaf[j].ms = 32;
 		}
 		id_ns->lbaf[0].ds = 12;
 		id_ns->lbaf[0].ms = 8;
@@ -3228,7 +3228,7 @@ static Property nvme_props[] = {
     DEFINE_PROP_UINT8("dpc", NvmeCtrl, dpc, 12),
     DEFINE_PROP_UINT8("dps", NvmeCtrl, dps, 11),
     DEFINE_PROP_UINT8("mc", NvmeCtrl, mc, 2),
-    DEFINE_PROP_UINT8("meta", NvmeCtrl, meta, 8),
+    DEFINE_PROP_UINT8("meta", NvmeCtrl, meta, 32),
     DEFINE_PROP_UINT32("cmbsz", NvmeCtrl, cmbsz, 0),
     DEFINE_PROP_UINT32("cmbloc", NvmeCtrl, cmbloc, 0),
     DEFINE_PROP_UINT16("oacs", NvmeCtrl, oacs, NVME_OACS_FORMAT),

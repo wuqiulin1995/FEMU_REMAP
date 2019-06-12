@@ -323,7 +323,10 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
 		 return -1;
 	 }
     t10 = (struct t10_pi_tuple *) meta;      //add by hao
-	fprintf(fp_meta,"%d\t%d\t%d\n", t10->guard_tag, t10->app_tag, t10->ref_tag);
+	fprintf(fp_meta,"%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", 
+                            t10->guard_tag, t10->app_tag, t10->ref_tag,
+                            t10->f2fs_ino, t10->f2fs_off, t10->f2fs_temp, t10->f2fs_type,
+                            t10->f2fs_old_lba, t10->f2fs_new_lba);
  
 	 return 0;
 #endif

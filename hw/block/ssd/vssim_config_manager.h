@@ -17,6 +17,12 @@ struct t10_pi_tuple {
 	uint16_t guard_tag;	/* Checksum */
 	uint16_t app_tag;		/* Opaque storage */
 	uint32_t ref_tag;		/* Target LBA or indirect LBA */
+	uint32_t f2fs_ino;         //hao:4kb data coresponding ino
+	uint32_t f2fs_off;         //hao:4kb data coresponding off
+	uint32_t f2fs_old_lba;     //hao:4kb data coresponding old_lba
+	uint32_t f2fs_new_lba;     //hao:4kb data coresponding new_lba
+	uint32_t f2fs_temp;        //hao:4kb data coresponding temp
+	uint32_t f2fs_type;        //hao:4kb data coresponding type
 };
 
 
