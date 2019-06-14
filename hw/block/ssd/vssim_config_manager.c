@@ -21,6 +21,7 @@ void INIT_SSD_CONFIG(struct ssdstate *ssd)
 	memset(szCommand, 0x00, 1024);
 
 	sc->sos = 32;                            //add by hao
+	sc->max_page = 0;
 
 	if(pfData!=NULL)
 	{

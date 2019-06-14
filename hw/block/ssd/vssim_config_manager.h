@@ -156,6 +156,8 @@ struct ssdconf {
     char FILE_NAME_HDB[1024]; // = {0,};
 
     uint16_t    sos;          //hao: metadata size
+
+    uint64_t       max_page;
 };
 
 struct ssdstate {
@@ -313,6 +315,8 @@ struct ssdstate {
 
 	uint8_t        meta_auto_gen;
 	char           *meta_fname;
+
+
 
 };
 

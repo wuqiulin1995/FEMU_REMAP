@@ -211,7 +211,7 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
     }
     memset(ssd->meta_buf, 0, ssd->meta_tbytes);
 
-#if 1                                 //changed by hao: 0--->1
+#if 0                                 //changed by hao: 0--->1
     if (!ssd->meta_fname) {      // Default meta file
         ssd->meta_auto_gen = 1;
         ssd->meta_fname = malloc(10);
@@ -291,13 +291,13 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
  
 	struct ssdconf *sc = &(ssd->ssdparams);
 
-
+#if 0  
     struct t10_pi_tuple *t10;               //add by hao
 	void * hao_meta_buf;                    //add by hao
+ #endif
  
  
- 
-#if 1                                        //hao: for debug
+#if 0                                        //hao: for debug
 	 FILE *meta_fp = ssd->metadata;
 	 size_t tgt_oob_len = sc->sos;
 	 size_t ret;
@@ -305,13 +305,13 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
 
      //memcpy(hao_meta_buf, meta, sc->sos);
 	 memcpy(ssd->meta_buf, meta, sc->sos);
-	 //return 0;                                     //add by hao
+	 return 0;                                     //add by hao
 
 
     // t10 = (struct t10_pi_tuple*) hao_meta_buf;      //add by hao
 	// fprintf(fp_meta,"%d\t%d\t%d\n", t10->guard_tag, t10->app_tag, t10->ref_tag);
  
-#if 1
+#if 0
 	 ret = fwrite(meta, tgt_oob_len, 1, meta_fp);
 	 if (ret != 1) {
 		 perror("femu_oc_meta_write: fwrite");

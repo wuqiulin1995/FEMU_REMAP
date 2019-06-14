@@ -997,7 +997,7 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
 	uint64_t meta = le64_to_cpu(rw->mptr);     //hao
 	void *msl;                                     //hao
 	uint16_t is_write;                             //hao
-    uint8_t i;                                     //hao
+    uint64_t i;                                     //hao
 
     //uint64_t gtsc = le64_to_cpu(rw->rsvd2);
     const uint8_t lba_index = NVME_ID_NS_FLBAS_INDEX(ns->id_ns.flbas);
@@ -1020,7 +1020,7 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     is_write = (rw->opcode == NVME_CMD_WRITE) ? 1 : 0;
     //printf("hao: nvme_rw\n");
 
-    msl = g_malloc0(sc->sos * 64);   //hao:① for metadata alloc space, assume a request max contain 256 pages
+    msl = g_malloc0(sc->sos * 512);   //hao:① for metadata alloc space, assume a request max contain 256 pages
     if (!msl) {
         printf("femu_oc_rw: ENOMEM\n");
         return -ENOMEM;
@@ -1035,6 +1035,17 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     }
 
 
+
+#if 0                  //hao:verify the max page numbers
+
+if (n_pages > sc->max_page) {
+    sc->max_page = n_pages;
+    printf("hao_page_number:%lu\n", n_pages);
+}
+
+#endif
+
+
     /*hao
 	*/
 
@@ -1044,9 +1055,11 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
 	// if (!meta) {
     //     printf("hao:test meta pointerxxxxxxxxx\n");
     // }
+
+#if 1                          //support meta or not support meta
     if (meta && is_write) {
         nvme_addr_read(n, meta, (void *)msl, n_pages * sc->sos);  
-       // printf("hao:write1111111111111111111111111\n");
+        //printf("hao:write1111111111111111111111111\n");
     }                                     
 
 
@@ -1059,7 +1072,8 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
                     goto fail_free_msl;
 
 				}			
-			}		
+			}
+        // printf("hao:write%d\n",i);           		
 		} else if (!is_write){	 //hao:read operatoin
 			if (meta) {
 				if (ftl_meta_read(ssd, ftl_meta_index(ssd, msl, i))) {
@@ -1075,7 +1089,7 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
         nvme_addr_write(n, meta, (void *)msl, n_pages * sc->sos);
         //printf("hao:readaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
     }   
-
+#endif
     //printf("hao:nvme_rw step2\n");
     g_free(msl);
 
@@ -2999,7 +3013,7 @@ static void nvme_init_namespaces(NvmeCtrl *n)
 			id_ns->lbaf[j].ms = 32;
 		}
 		id_ns->lbaf[0].ds = 12;
-		id_ns->lbaf[0].ms = 8;
+		id_ns->lbaf[0].ms = 32;
 
         lba_index = NVME_ID_NS_FLBAS_INDEX(ns->id_ns.flbas);
         blks = n->ns_size / ((1 << id_ns->lbaf[lba_index].ds));
@@ -3225,10 +3239,10 @@ static Property nvme_props[] = {
     DEFINE_PROP_UINT8("nlbaf", NvmeCtrl, nlbaf, 5),
     DEFINE_PROP_UINT8("lba_index", NvmeCtrl, lba_index, 3),
     DEFINE_PROP_UINT8("extended", NvmeCtrl, extended, 0),
-    DEFINE_PROP_UINT8("dpc", NvmeCtrl, dpc, 12),
-    DEFINE_PROP_UINT8("dps", NvmeCtrl, dps, 11),
-    DEFINE_PROP_UINT8("mc", NvmeCtrl, mc, 2),
-    DEFINE_PROP_UINT8("meta", NvmeCtrl, meta, 32),
+    DEFINE_PROP_UINT8("dpc", NvmeCtrl, dpc, 12),  //12
+    DEFINE_PROP_UINT8("dps", NvmeCtrl, dps, 11),  //11
+    DEFINE_PROP_UINT8("mc", NvmeCtrl, mc, 2),     //2
+    DEFINE_PROP_UINT8("meta", NvmeCtrl, meta, 32),  //32
     DEFINE_PROP_UINT32("cmbsz", NvmeCtrl, cmbsz, 0),
     DEFINE_PROP_UINT32("cmbloc", NvmeCtrl, cmbloc, 0),
     DEFINE_PROP_UINT16("oacs", NvmeCtrl, oacs, NVME_OACS_FORMAT),

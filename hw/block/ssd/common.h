@@ -221,9 +221,9 @@
 /* FTL Debugging */
 //#define FTL_DEBUG
 //#define FTL_PERF_DEBUG
-#define FTL_IO_LATENCY                  //opened by hao
+//#define FTL_IO_LATENCY                  //opened by hao
 
-#define FTL_META_TRANS
+//#define FTL_META_TRANS
 
 /* FTL Perf Debug */
 //#define PERF_DEBUG1
