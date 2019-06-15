@@ -171,7 +171,7 @@
 
 extern void SSD_INIT(struct ssdstate *ssd);
 extern int64_t SSD_READ(struct ssdstate *ssd, unsigned int length, int64_t sector_nb);
-extern int64_t SSD_WRITE(struct ssdstate *ssd, unsigned int length, int64_t sector_nb);
+extern int64_t SSD_WRITE(struct ssdstate *ssd, struct request_f2fs *request1);
 extern void femu_oc_exit(NvmeCtrl *n);
 extern int femu_oc_init(NvmeCtrl *n);
 extern int femu_oc_flush_tbls(NvmeCtrl *n);
@@ -1014,6 +1014,8 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     struct ssdconf *sc = &(ssd->ssdparams);
     uint32_t n_pages = data_size / 4096;
 
+    struct request_f2fs *request1;           //add by hao
+
     req->data_offset = data_offset;
     req->is_write = (rw->opcode == NVME_CMD_WRITE) ? 1 : 0;
 
@@ -1062,11 +1064,11 @@ if (n_pages > sc->max_page) {
         //printf("hao:write1111111111111111111111111\n");
     }                                     
 
-
+    printf("hao_debug:aaaaaaaaa %d\n", slba << data_shift);
     for (i = 0; i < n_pages; i++) {	
 		if (is_write) {
 			if (meta) { //hao:Write the metadata corresponding to each page to the corresponding address
-				if (ftl_meta_write(ssd, ftl_meta_index(ssd, msl, i))) {
+				if (ftl_meta_write(ssd, ftl_meta_index(ssd, msl, i), request1, i)) {
 					printf("femu_oc_rw: write metadata failed\n");
                     err = NVME_INVALID_FIELD | NVME_DNR;
                     goto fail_free_msl;
@@ -1088,7 +1090,8 @@ if (n_pages > sc->max_page) {
     if (meta && (!is_write)) {
         nvme_addr_write(n, meta, (void *)msl, n_pages * sc->sos);
         //printf("hao:readaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
-    }   
+    }  
+
 #endif
     //printf("hao:nvme_rw step2\n");
     g_free(msl);
@@ -1109,11 +1112,14 @@ if (n_pages > sc->max_page) {
     //overhead = cyc2ns(rdtscp() + tsc_offset - gtsc);
     req->expire_time = qemu_clock_get_ns(QEMU_CLOCK_REALTIME); // + 200000 - overhead;
 
+    request1->length = data_size >> 9;
+	request1->sector_nb = data_offset >> 9;
+
     if (req->is_write) {
         //printf("SSD_WRITE: nlb = %lld, slba=%lld, data_size=%lld, data_offset=%lld\n", nlb, slba, data_size, data_offset);
         overhead = qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - req->expire_time;
         if (n->femu_mode == FEMU_BLACKBOX_MODE)
-            req->expire_time += SSD_WRITE(ssd, data_size >> 9, data_offset >> 9) - overhead;
+            req->expire_time += SSD_WRITE(ssd, request1) - overhead;
     } else {
         //printf("SSD_READ: nlb = %lld, slba=%lld, data_size=%lld, data_offset=%lld\n", nlb, slba, data_size, data_offset);
         overhead = qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - req->expire_time;

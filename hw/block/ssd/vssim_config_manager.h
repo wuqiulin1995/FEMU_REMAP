@@ -11,7 +11,8 @@
 #include "common.h"
 
 
-
+//extern float filter_weight[FILTER_NUMBER];
+//extern unsigned char filter[FILTER_NUMBER][FILTER_SIZE_BYTES];       //filter[4][256]
 //add by hao from nvme driver
 struct t10_pi_tuple {
 	uint16_t guard_tag;	/* Checksum */
@@ -159,6 +160,29 @@ struct ssdconf {
 
     uint64_t       max_page;
 };
+
+
+struct lpn_info
+{
+	int f2fs_ino;
+	int f2fs_off;
+	int f2fs_type;
+	int f2fs_temp;
+	unsigned int f2fs_current_lpn;
+	unsigned int f2fs_old_lpn;
+};
+
+
+struct request_f2fs {
+	unsigned int length;
+	int64_t sector_nb;
+
+	struct lpn_info lpns_info[512];
+
+
+};
+
+
 
 struct ssdstate {
     struct ssdconf ssdparams;
@@ -316,7 +340,12 @@ struct ssdstate {
 	uint8_t        meta_auto_gen;
 	char           *meta_fname;
 
+	int current_filter;
+	int current_decay_filter;
+	unsigned long data_buffer_counter;   //记录数据buffer的sector数，512个请求时重置bloom filter
 
+    float filter_weight[FILTER_NUMBER];
+    unsigned char filter[FILTER_NUMBER][FILTER_SIZE_BYTES];       //filter[4][256]
 
 };
 

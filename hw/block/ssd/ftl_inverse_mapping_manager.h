@@ -34,7 +34,7 @@ typedef struct block_state_entry
 
 typedef struct empty_block_root
 {
-	struct empty_block_entry* head;
+	struct empty_block_entry* head[13];
 	struct empty_block_entry* tail;
 	unsigned int empty_block_nb;
 }empty_block_root;
@@ -78,7 +78,7 @@ void TERM_EMPTY_BLOCK_LIST(struct ssdstate *ssd);
 void TERM_VICTIM_BLOCK_LIST(struct ssdstate *ssd);
 void TERM_VALID_ARRAY(struct ssdstate *ssd);
 
-empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_index);
+empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_index, int f2fs_block_type);
 int INSERT_EMPTY_BLOCK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_block_nb);
 
 int INSERT_VICTIM_BLOCK(struct ssdstate *ssd, empty_block_entry* full_block);

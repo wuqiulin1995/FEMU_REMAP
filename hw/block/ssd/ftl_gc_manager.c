@@ -91,6 +91,8 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 	nand_io_info* n_io_info = NULL;
 	block_state_entry* b_s_entry;
 
+	int f2fs_block_type;
+
     int64_t svb_start = get_ts_in_ns();
 	ret = SELECT_VICTIM_BLOCK(ssd, chip, &victim_phy_flash_nb, &victim_phy_block_nb);
     ssd->time_svb += get_ts_in_ns() - svb_start;
@@ -107,6 +109,8 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 
 	b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, victim_phy_flash_nb, victim_phy_block_nb);
 	valid_array = b_s_entry->valid_array;
+
+	f2fs_block_type = b_s_entry->type;          //add by hao
 
     int64_t cp_start = get_ts_in_ns();
 
@@ -125,11 +129,11 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 	for(i=0;i<PAGE_NB;i++){
 		if(valid_array[i]=='V'){
 #ifdef GC_VICTIM_OVERALL
-			ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn);
+			ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, f2fs_block_type);
             //new_ppn = new_ppn_base;
             //new_ppn_base++;
 #else
-			ret = GET_NEW_PAGE(ssd, VICTIM_INCHIP, mapping_index, &new_ppn);
+			ret = GET_NEW_PAGE(ssd, VICTIM_INCHIP, mapping_index, &new_ppn, f2fs_block_type);
             //new_ppn = new_ppn_base;
             //new_ppn_base++;
 #endif
@@ -140,11 +144,11 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 
 		
 			/* Read a Valid Page from the Victim NAND Block */
-			n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_READ, -1, ssd->io_request_seq_nb);
+			//n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_READ, -1, ssd->io_request_seq_nb);
 			SSD_PAGE_READ(ssd, victim_phy_flash_nb, victim_phy_block_nb, i, n_io_info);
 
 			/* Write the Valid Page*/
-			n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_WRITE, -1, ssd->io_request_seq_nb);
+			//n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_WRITE, -1, ssd->io_request_seq_nb);
 			SSD_PAGE_WRITE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), n_io_info);
 
 			//old_ppn =  victim_block_base_ppn  + i;
@@ -156,7 +160,7 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 #else
 			lpn = GET_INVERSE_MAPPING_INFO(ssd, old_ppn);
 #endif
-			UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn);
+			UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, f2fs_block_type);
 
 			copy_page_nb++;
 		}

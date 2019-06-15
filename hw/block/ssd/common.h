@@ -21,6 +21,16 @@
 #define CHANNEL_BLOCKING    2
 #define CHIP_BLOCKING       3
 
+
+ //Multiple bloom filters
+#define FILTER_NUMBER 4
+#define FILTER_SIZE 14
+#define FILTER_SIZE_BYTES (1 << (FILTER_SIZE - 3))
+
+
+
+
+
 //extern int GC_MODE;
 //extern int64_t *gc_slot;
 
@@ -130,18 +140,49 @@
 #define COLD_RAN_WRITE	24
 #endif
 
-/* Block Type */
-#define EMPTY_BLOCK             30
-#define SEQ_BLOCK               31
-#define EMPTY_SEQ_BLOCK         32
-#define RAN_BLOCK               33
-#define EMPTY_RAN_BLOCK         34
-#define RAN_COLD_BLOCK		35
-#define EMPTY_RAN_COLD_BLOCK	36
-#define	RAN_HOT_BLOCK		37
-#define	EMPTY_RAN_HOT_BLOCK	38
-#define DATA_BLOCK              39
-#define EMPTY_DATA_BLOCK        40
+// /* Block Type */
+// #define EMPTY_BLOCK             30
+// #define SEQ_BLOCK               31
+// #define EMPTY_SEQ_BLOCK         32
+// #define RAN_BLOCK               33
+// #define EMPTY_RAN_BLOCK         34
+// #define RAN_COLD_BLOCK		35
+// #define EMPTY_RAN_COLD_BLOCK	36
+// #define	RAN_HOT_BLOCK		37
+// #define	EMPTY_RAN_HOT_BLOCK	38
+// #define DATA_BLOCK              39
+// #define EMPTY_DATA_BLOCK        40
+
+
+
+
+
+/*New Block Type */
+
+#define DATA_BLOCK                39  //ready to change
+
+#define EMPTY_BLOCK               100
+
+#define METADATA_BLOCK            101
+
+
+
+#define DATA_HOT_HOT_BLOCK         102
+#define DATA_HOT_COLD_BLOCK        103
+#define DATA_WARM_HOT_BLOCK        104
+#define DATA_WARM_COLD_BLOCK       105
+#define DATA_COLD_HOT_BLOCK        106
+#define DATA_COLD_COLD_BLOCK       107
+
+
+#define NODE_HOT_HOT_BLOCK         108
+#define NODE_HOT_COLD_BLOCK        109
+#define NODE_WARM_HOT_BLOCK        110
+#define NODE_WARM_COLD_BLOCK       111
+#define NODE_COLD_HOT_BLOCK        112
+#define NODE_COLD_COLD_BLOCK       113
+
+
 
 /* GC Copy Valid Page Type */
 #define VICTIM_OVERALL	41

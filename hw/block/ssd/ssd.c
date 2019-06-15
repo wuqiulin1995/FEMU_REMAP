@@ -35,6 +35,7 @@ void do_warmup(struct ssdstate *ssd)
 {
     struct ssdconf *sc = &(ssd->ssdparams);
     int GC_THRESHOLD_BLOCK_NB = sc->GC_THRESHOLD_BLOCK_NB;
+	struct request_f2fs *request1;           //add by hao
 
     ssd->in_warmup_stage = true;
     char *tfname = "./data/warmup.trace";
@@ -51,6 +52,7 @@ void do_warmup(struct ssdstate *ssd)
     int t_nb_sects = 0;
     int t_ios = 0;
     int ntraverses = 0;
+    int64_t i = 0;
 
     int64_t ssd_sz = 24 * 1024 * 1024 * 2 - 50 * 1024 * 2;
 
@@ -64,9 +66,22 @@ void do_warmup(struct ssdstate *ssd)
         } else if (sr == EOF) {
             break;
         }
-        if (w_type == 0) /* skip writes */
+        if (w_type == 0)  {         /* skip writes */
             //continue;
-            SSD_WRITE(ssd, w_length, w_sector_num % ssd_sz);
+
+			request1->lpns_info[i].f2fs_ino = 0;
+			request1->lpns_info[i].f2fs_off = 0;
+			request1->lpns_info[i].f2fs_current_lpn = 0;
+			request1->lpns_info[i].f2fs_temp = 0;
+			request1->lpns_info[i].f2fs_type = 0;
+			request1->lpns_info[i].f2fs_old_lpn = 0;
+
+            request1->length =  w_length;
+
+			request1->sector_nb = w_sector_num % ssd_sz;
+            SSD_WRITE(ssd, request1);
+            i++;
+        }
         t_nb_sects += w_length;
         t_ios++;
         //mylog("write: (%"PRId64", %d)\n", w_sector_num, w_length);
@@ -83,6 +98,8 @@ void do_rand_warmup(struct ssdstate *ssd)
     struct ssdconf *sc = &(ssd->ssdparams);
     int GC_THRESHOLD_BLOCK_NB = sc->GC_THRESHOLD_BLOCK_NB;
     double GC_THRESHOLD = sc->GC_THRESHOLD;
+
+	struct request_f2fs *request1;           //add by hao
 
     int i;
     int nios = 10;
@@ -110,9 +127,22 @@ void do_rand_warmup(struct ssdstate *ssd)
         }
 
         ssd->in_warmup_stage = 1;
+        i = 0;
         while(fscanf(fp, "%"PRId64"%d\n", &io_oft, &io_sz) != EOF) {
-            SSD_WRITE(ssd, io_sz, io_oft);
+			request1->lpns_info[i].f2fs_ino = 0;
+			request1->lpns_info[i].f2fs_off = 0;
+			request1->lpns_info[i].f2fs_current_lpn = 0;
+			request1->lpns_info[i].f2fs_temp = 0;
+			request1->lpns_info[i].f2fs_type = 0;
+			request1->lpns_info[i].f2fs_old_lpn = 0;
+
+
+			request1->length = io_sz;
+
+			request1->sector_nb = io_oft;
+            SSD_WRITE(ssd, request1);
             written_sz_in_sects += io_sz;
+            i++;
         }
         ssd->in_warmup_stage = 0;
         printf("========[%s] WARMUP ENDS %"PRId64"/%d blocks,"
@@ -126,11 +156,24 @@ void do_rand_warmup(struct ssdstate *ssd)
             fprintf(stderr, "CANNOT open warmup file [%s]\n", ssd->warmupfile);
             exit(EXIT_FAILURE);
         }
-
+        i = 0;
         while (written_sz_in_sects <= ssd_sz_in_sects * (sc->GC_THRESHOLD - 0.02)) {
-            io_sz = io[rand() % nios] * 2; 
-            io_oft = (rand() % (ssd_sz_in_sects / 4)) * 4;
-            SSD_WRITE(ssd, io_sz, io_oft);
+			io_sz = io[rand() % nios] * 2; 
+			io_oft = (rand() % (ssd_sz_in_sects / 4)) * 4;
+
+			request1->lpns_info[i].f2fs_ino = 0;
+			request1->lpns_info[i].f2fs_off = 0;
+			request1->lpns_info[i].f2fs_current_lpn = 0;
+			request1->lpns_info[i].f2fs_temp = 0;
+			request1->lpns_info[i].f2fs_type = 0;
+			request1->lpns_info[i].f2fs_old_lpn = 0;
+			
+			
+			request1->length = io_sz;
+			
+			request1->sector_nb = io_oft;
+			SSD_WRITE(ssd, request1);
+            i++;
             //printf("%"PRId64", %d\n", io_oft, io_sz);
             written_sz_in_sects += io_sz;
 
@@ -199,7 +242,7 @@ void SSD_TERM(struct ssdstate *ssd)
 
 //long last_time = 0;
 
-int64_t SSD_WRITE(struct ssdstate *ssd, unsigned int length, int64_t sector_nb)
+int64_t SSD_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 {
 #if 0
     int64_t curtime = get_usec();
@@ -211,6 +254,14 @@ int64_t SSD_WRITE(struct ssdstate *ssd, unsigned int length, int64_t sector_nb)
     }
 #endif
     
+	unsigned int length;
+	int64_t sector_nb;
+
+
+	length = request1->length; 
+	sector_nb = request1->sector_nb;
+
+
 #if defined SSD_THREAD	
 
 	pthread_mutex_lock(&cq_lock);
@@ -239,7 +290,7 @@ int64_t SSD_WRITE(struct ssdstate *ssd, unsigned int length, int64_t sector_nb)
 	}
 	ENQUEUE_IO(WRITE, sector_nb, length);
 #else
-	return FTL_WRITE(ssd, sector_nb, length);
+	return FTL_WRITE(ssd, request1);
 #endif
 }
 

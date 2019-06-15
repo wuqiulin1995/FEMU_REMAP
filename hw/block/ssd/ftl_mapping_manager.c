@@ -70,7 +70,7 @@ int64_t GET_MAPPING_INFO(struct ssdstate *ssd, int64_t lpn)
 	return ppn;
 }
 
-int GET_NEW_PAGE(struct ssdstate *ssd, int mode, int mapping_index, int64_t* ppn)
+int GET_NEW_PAGE(struct ssdstate *ssd, int mode, int mapping_index, int64_t* ppn, int f2fs_block_type)
 {
     struct ssdconf *sc = &(ssd->ssdparams);
     int BLOCK_NB = sc->BLOCK_NB;
@@ -79,13 +79,13 @@ int GET_NEW_PAGE(struct ssdstate *ssd, int mode, int mapping_index, int64_t* ppn
 
 	empty_block_entry* curr_empty_block;
 
-	curr_empty_block = GET_EMPTY_BLOCK(ssd, mode, mapping_index);
+	curr_empty_block = GET_EMPTY_BLOCK(ssd, mode, mapping_index, f2fs_block_type);
 
 	/* If the flash memory has no empty block,
                 Get empty block from the other flash memories */
         if(mode == VICTIM_INCHIP && curr_empty_block == NULL){
                 /* Try again */
-                curr_empty_block = GET_EMPTY_BLOCK(ssd, VICTIM_OVERALL, mapping_index);
+                curr_empty_block = GET_EMPTY_BLOCK(ssd, VICTIM_OVERALL, mapping_index, f2fs_block_type);
         }
 
 	if(curr_empty_block == NULL){
@@ -126,7 +126,7 @@ int UPDATE_OLD_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn)
 	return SUCCESS;
 }
 
-int UPDATE_NEW_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn, int64_t ppn)
+int UPDATE_NEW_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn, int64_t ppn,	int f2fs_block_type)
 {
     int64_t *mapping_table = ssd->mapping_table;
 
@@ -139,11 +139,31 @@ int UPDATE_NEW_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn, int64_t ppn)
 
 	/* Update Inverse Page Mapping Table */
 	UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, ppn), CALC_BLOCK(ssd, ppn), CALC_PAGE(ssd, ppn), VALID);
-	UPDATE_BLOCK_STATE(ssd, CALC_FLASH(ssd, ppn), CALC_BLOCK(ssd, ppn), DATA_BLOCK);
+	UPDATE_BLOCK_STATE(ssd, CALC_FLASH(ssd, ppn), CALC_BLOCK(ssd, ppn), f2fs_block_type);
 	UPDATE_INVERSE_MAPPING(ssd, ppn, lpn);
 
 	return SUCCESS;
 }
+
+
+void TRIM_MAPPING_TABLE(struct ssdstate *ssd, int64_t f2fs_old_lpn) {
+	
+
+	int64_t old_ppn;
+
+	old_ppn = GET_MAPPING_INFO(ssd, f2fs_old_lpn);
+
+	if (old_ppn == -1)
+		return;
+
+	UPDATE_OLD_PAGE_MAPPING(ssd, f2fs_old_lpn);		 //hao:更新旧的映射表，将旧的ppn的反向映射表置无效
+
+	ssd->mapping_table[f2fs_old_lpn] = -1;
+
+	return;
+
+}
+
 
 unsigned int CALC_FLASH(struct ssdstate *ssd, int64_t ppn)
 {
@@ -292,14 +312,14 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
 			copy from femu-oc
  
  */
- int ftl_meta_write(struct ssdstate *ssd, void *meta)
+ int ftl_meta_write(struct ssdstate *ssd, void *meta, struct request_f2fs *request1,  uint64_t i)
  {
  
 	struct ssdconf *sc = &(ssd->ssdparams);
 
-#ifdef FTL_META_TRANS
+#if 1
     struct t10_pi_tuple *t10;               //add by hao
- #endif
+#endif
  
  
 #if 0                                        //hao: for debug
@@ -309,7 +329,20 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
 #endif
 
 	 memcpy(ssd->meta_buf, meta, sc->sos);
-	 return 0;                                     //add by hao
+
+	 t10 = (struct t10_pi_tuple*) meta;
+
+
+	request1->lpns_info[i].f2fs_ino = t10->f2fs_ino;
+	request1->lpns_info[i].f2fs_off = t10->f2fs_off;
+	request1->lpns_info[i].f2fs_current_lpn = t10->f2fs_new_lba;
+	request1->lpns_info[i].f2fs_temp = t10->f2fs_temp;
+	request1->lpns_info[i].f2fs_type = t10->f2fs_type;
+	request1->lpns_info[i].f2fs_old_lpn = t10->f2fs_old_lba;
+
+    printf("hao_debug:bbbbbbbb %d\n",t10->f2fs_new_lba);
+
+	return 0; 									//add by hao
 
 
 
@@ -429,3 +462,5 @@ struct ssdconf *sc = &(ssd->ssdparams);
     return 0;
 #endif
 }
+
+

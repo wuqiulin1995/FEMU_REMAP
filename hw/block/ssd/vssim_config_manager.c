@@ -9,10 +9,17 @@
 #include <assert.h>
 #include "god.h"
 
+
+
 void INIT_SSD_CONFIG(struct ssdstate *ssd)
 {
     struct ssdconf *sc = &(ssd->ssdparams);
 	FILE* pfData;
+
+	unsigned int p1, q;                      //add by hao
+
+
+
 	pfData = fopen(ssd->conffile, "r");
 	
 	char* szCommand = NULL;
@@ -22,6 +29,19 @@ void INIT_SSD_CONFIG(struct ssdstate *ssd)
 
 	sc->sos = 32;                            //add by hao
 	sc->max_page = 0;
+
+	ssd->data_buffer_counter = 0;
+
+	ssd->current_filter = 0;
+	ssd->current_decay_filter = -1;
+
+	for (q = 0; q < FILTER_NUMBER; q++)
+		for (p1 = 0; p1 < FILTER_SIZE_BYTES; p1++)
+		ssd->filter[q][p1] = 0;
+
+//初始化filter_weight数组
+	for (q = 0; q < FILTER_NUMBER; q++)
+		ssd->filter_weight[q] = 0;
 
 	if(pfData!=NULL)
 	{
