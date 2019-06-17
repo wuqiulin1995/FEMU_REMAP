@@ -29,9 +29,9 @@ void INIT_SSD_CONFIG(struct ssdstate *ssd)
 
 	sc->sos = 32;                            //add by hao
 	sc->max_page = 0;
-
+	ssd->block_cnt = 0;
 	ssd->data_buffer_counter = 0;
-
+	ssd->empty_head_block_index = 0;
 	ssd->current_filter = 0;
 	ssd->current_decay_filter = -1;
 

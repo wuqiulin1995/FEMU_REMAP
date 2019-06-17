@@ -170,6 +170,7 @@
 #define FEMU_DEF_NOSSD_MODE		2
 
 extern void SSD_INIT(struct ssdstate *ssd);
+
 extern int64_t SSD_READ(struct ssdstate *ssd, unsigned int length, int64_t sector_nb);
 extern int64_t SSD_WRITE(struct ssdstate *ssd, struct request_f2fs *request1);
 extern void femu_oc_exit(NvmeCtrl *n);
@@ -1016,6 +1017,8 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
 
     struct request_f2fs *request1;           //add by hao
 
+   	request1 = (struct request_f2fs*)malloc(sizeof(struct request_f2fs)); 
+	memset(request1, 0, sizeof(struct request_f2fs));
     req->data_offset = data_offset;
     req->is_write = (rw->opcode == NVME_CMD_WRITE) ? 1 : 0;
 
@@ -1058,13 +1061,16 @@ if (n_pages > sc->max_page) {
     //     printf("hao:test meta pointerxxxxxxxxx\n");
     // }
 
+
+    //printf("hao_page_number:%lu\n", n_pages);
 #if 1                          //support meta or not support meta
     if (meta && is_write) {
         nvme_addr_read(n, meta, (void *)msl, n_pages * sc->sos);  
+       // printf("hao_debug:aaaaaaaaa %d %d\n", slba, n_pages);
         //printf("hao:write1111111111111111111111111\n");
     }                                     
 
-    printf("hao_debug:aaaaaaaaa %d\n", slba << data_shift);
+
     for (i = 0; i < n_pages; i++) {	
 		if (is_write) {
 			if (meta) { //hao:Write the metadata corresponding to each page to the corresponding address
@@ -1101,9 +1107,10 @@ if (n_pages > sc->max_page) {
                 offsetof(NvmeRwCmd, prp1), 0, ns->id);
         return NVME_INVALID_FIELD | NVME_DNR;
     }
-    //printf("hao:nvme_rw step3\n");
+   // printf("hao:nvme_rw step3\n");
+   // printf("hao_debug:bbbbbbbb%d %d\n", nlb << data_shift, req->qsg.size);
     assert((nlb << data_shift) == req->qsg.size);
-
+   // printf("hao_debug:cccccccc%d %d\n", data_size >> 9, data_offset >> 9);
     req->slba = slba;
     req->meta_size = 0;
     req->status = NVME_SUCCESS;
@@ -1111,10 +1118,10 @@ if (n_pages > sc->max_page) {
     req->ns = ns;
     //overhead = cyc2ns(rdtscp() + tsc_offset - gtsc);
     req->expire_time = qemu_clock_get_ns(QEMU_CLOCK_REALTIME); // + 200000 - overhead;
-
+    //printf("hao_debug:cccccccc%d %d\n", nlb, ns);
     request1->length = data_size >> 9;
 	request1->sector_nb = data_offset >> 9;
-
+    //printf("hao_debug:ddddddddd %d %d\n", request1->length, request1->sector_nb);
     if (req->is_write) {
         //printf("SSD_WRITE: nlb = %lld, slba=%lld, data_size=%lld, data_offset=%lld\n", nlb, slba, data_size, data_offset);
         overhead = qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - req->expire_time;
@@ -1126,7 +1133,8 @@ if (n_pages > sc->max_page) {
         if (n->femu_mode == FEMU_BLACKBOX_MODE)
             req->expire_time += SSD_READ(ssd, data_size >> 9 , data_offset >> 9) - overhead;
     }
-    //printf("hao:nvme_rw step4\n");
+    free(request1);
+   // printf("hao:nvme_rw step4\n");
     //return NVME_SUCCESS;
     return nvme_heap_storage_rw(n, ns, cmd, req);
 

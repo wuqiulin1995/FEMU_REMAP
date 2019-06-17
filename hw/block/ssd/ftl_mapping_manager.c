@@ -340,7 +340,12 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
 	request1->lpns_info[i].f2fs_type = t10->f2fs_type;
 	request1->lpns_info[i].f2fs_old_lpn = t10->f2fs_old_lba;
 
-    printf("hao_debug:bbbbbbbb %d\n",t10->f2fs_new_lba);
+    if (t10->f2fs_type != 0 && t10->f2fs_type != 1 && t10->f2fs_type != 2) {
+       request1->lpns_info[i].f2fs_type  = 2;              //hao: metadata type 
+       request1->lpns_info[i].f2fs_old_lpn = -1;
+    }
+
+    //printf("hao_debug:bbbbbbbb %d %d\n",t10->f2fs_new_lba, t10->f2fs_old_lba);
 
 	return 0; 									//add by hao
 

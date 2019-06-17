@@ -164,12 +164,12 @@ struct ssdconf {
 
 struct lpn_info
 {
-	int f2fs_ino;
-	int f2fs_off;
+	int64_t f2fs_ino;
+	int64_t f2fs_off;
 	int f2fs_type;
 	int f2fs_temp;
-	unsigned int f2fs_current_lpn;
-	unsigned int f2fs_old_lpn;
+	int64_t f2fs_current_lpn;
+	int f2fs_old_lpn;
 };
 
 
@@ -193,6 +193,8 @@ struct ssdstate {
     int64_t *gc_slot;
     FILE *statfp;
     char statfile[64];
+
+    int block_cnt;
 
     int64_t stat_last_ts;// = 0;
     int fail_cnt;// = 0;
@@ -343,7 +345,7 @@ struct ssdstate {
 	int current_filter;
 	int current_decay_filter;
 	unsigned long data_buffer_counter;   //记录数据buffer的sector数，512个请求时重置bloom filter
-
+    int empty_head_block_index;
     float filter_weight[FILTER_NUMBER];
     unsigned char filter[FILTER_NUMBER][FILTER_SIZE_BYTES];       //filter[4][256]
 

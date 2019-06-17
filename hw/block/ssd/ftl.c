@@ -104,6 +104,7 @@ void FTL_INIT(struct ssdstate *ssd)
 		INIT_PERF_CHECKER(ssd);
 
 		INIT_METADATA_TABLE(ssd);
+
 		
 #ifdef FTL_MAP_CACHE
 		INIT_CACHE();
@@ -123,7 +124,7 @@ void FTL_INIT(struct ssdstate *ssd)
 		fp_ftl_r = fopen("./data/p_ftl_r.txt","a");
 #endif
 		SSD_IO_INIT(ssd);
-	
+
 		//printf("[%s] complete\n", __FUNCTION__);
 	}
 }
@@ -456,7 +457,8 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 
 	unsigned int length;
 	int64_t sector_nb;
-
+	
+	//printf("hao_debug:_FTL_WRITE\n");
 
 	length = request1->length; 
 	sector_nb = request1->sector_nb;
@@ -534,7 +536,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 	int64_t  f2fs_temp;
 
 	int64_t  f2fs_current_lpn;
-	int64_t  f2fs_old_lpn;
+	int  f2fs_old_lpn;
 
 	int64_t  bloom_temp;
 	int      f2fs_block_type;
@@ -568,13 +570,24 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 		f2fs_off = request1->lpns_info[write_page_nb].f2fs_off;
 		f2fs_current_lpn = request1->lpns_info[write_page_nb].f2fs_current_lpn;
 		f2fs_old_lpn = request1->lpns_info[write_page_nb].f2fs_old_lpn;
-		bloom_temp = Bloom_filter(ssd, f2fs_ino, f2fs_off);
+		
+		//printf("hao_debug:_FTL_WRITE%d %d %d %d %d %d\n", f2fs_type ,f2fs_temp, f2fs_ino, 
+		//											f2fs_off, f2fs_current_lpn, f2fs_old_lpn);	
+		
+		if (f2fs_type != 2)
+			bloom_temp = Bloom_filter(ssd, f2fs_ino, f2fs_off);
+		else 
+			bloom_temp = 0;
+
+		//printf("hao_debug:_FTL_WRITE %d\n", bloom_temp);
+
 		f2fs_block_type = NEW_BLOCK_TYPE(f2fs_type, f2fs_temp, bloom_temp);
 
+		//printf("hao_debug:_FTL_WRITE f2fs_block_type %d\n", f2fs_block_type);
 #ifdef FIRM_IO_BUFFER
 		INCREASE_WB_FTL_POINTER(write_sects);
 #endif
-
+		printf("hao_debug:_FTL_WRITEaaaaaaaaaaaaaaaa %d\n", bloom_temp);
 #ifdef WRITE_NOPARAL
 		ret = GET_NEW_PAGE(VICTIM_NOPARAL, empty_block_table_index, &new_ppn, f2fs_block_type);
 #else
@@ -584,10 +597,10 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 			printf("ERROR[%s] Get new page fail \n", __FUNCTION__);
 			return FAIL;
 		}
-
+		printf("hao_debug:_FTL_WRITEbbbbbbbbbbbbbbbbbbbbbb %d\n", bloom_temp);
 		lpn = lba / (int64_t)SECTORS_PER_PAGE;
 		old_ppn = GET_MAPPING_INFO(ssd, lpn);
-
+		//printf("hao_debug:_FTL_WRITE lpn old_ppn %d %d\n",lpn, old_ppn);
 		n_io_info = CREATE_NAND_IO_INFO(ssd, write_page_nb, WRITE, io_page_nb, ssd->io_request_seq_nb);
 
         num_flash = CALC_FLASH(ssd, new_ppn);
@@ -621,14 +634,14 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
         if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
             max_need_to_emulate_tt = cur_need_to_emulate_tt;
         }
-		
-		write_page_nb++;
 
+		write_page_nb++;
+		//printf("hao_debug:_FTL_WRITE new_ppn %d\n", new_ppn);
         //printf("FTL-WRITE: lpn -> ppn: %"PRId64" -> %"PRId64"\n", lpn, new_ppn);
 
 		UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
 		UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, f2fs_block_type);
-
+		//printf("hao_debug:_FTL_WRITE xxxxxxxxxxxxxx %d\n", write_page_nb);
 #ifdef FTL_DEBUG
                 if(ret == SUCCESS){
                         printf("\twrite complete [%d, %d, %d]\n",CALC_FLASH(new_ppn), CALC_BLOCK(new_ppn),CALC_PAGE(new_ppn));
@@ -637,12 +650,16 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
                         printf("ERROR[%s] %d page write fail \n",__FUNCTION__, new_ppn);
                 }
 #endif
+        if(f2fs_old_lpn != -1 && f2fs_type != 2) {
+			printf("hao_debug:_FTL_WRITE yyyyyyy %d %d\n", f2fs_old_lpn, f2fs_type);
+			TRIM_MAPPING_TABLE(ssd, f2fs_old_lpn);	//add by hao: Immediate invalidation
+			//printf("hao_debug:_FTL_WRITE yyyyyyy %d\n", f2fs_old_lpn);
+		}
 
-		TRIM_MAPPING_TABLE(ssd, f2fs_old_lpn);	//add by hao: Immediate invalidation
 		lba += write_sects;
 		remain -= write_sects;
 		left_skip = 0;
-
+		//printf("hao_debug:_FTL_WRITE remain %d\n", remain);
 	}
 
     if (blocking_to > curtime) {
@@ -718,7 +735,7 @@ else if (f2fs_type == 1)		    //node
 	}	
 
 }
-else if (f2fs_type == 2)		           //data				
+else if (f2fs_type == 0)		           //data				
 {
 	if (f2fs_temp == 0) 				   // f2fs 语义
 	{ 

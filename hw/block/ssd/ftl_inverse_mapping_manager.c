@@ -7,6 +7,8 @@
 
 #include "common.h"
 
+//FILE* ftl_block_w;
+
 void INIT_INVERSE_MAPPING_TABLE(struct ssdstate *ssd)
 {
     struct ssdconf *sc = &(ssd->ssdparams);
@@ -104,10 +106,9 @@ void INIT_EMPTY_BLOCK_LIST(struct ssdstate *ssd)
     int BLOCK_NB = sc->BLOCK_NB;
     int PAGE_NB = sc->PAGE_NB;
 	int i, j, k;
-
 	empty_block_entry* curr_entry;
 	empty_block_root* curr_root;
-
+	//FILE* ftl_block_w = fopen("./data/123.txt","a");
 	ssd->empty_block_list = (void*)calloc(PLANES_PER_FLASH * FLASH_NB, sizeof(empty_block_root));
 	if(ssd->empty_block_list == NULL){
 		printf("ERROR[%s] Calloc mapping table fail\n", __FUNCTION__);
@@ -137,23 +138,24 @@ void INIT_EMPTY_BLOCK_LIST(struct ssdstate *ssd)
 					curr_entry->next = NULL;
 
 					if(k == curr_root->empty_block_nb){
-						curr_root->head[0] = curr_entry;
-						curr_root->head[1] = curr_entry;
-					    curr_root->head[2] = curr_entry;
-					    curr_root->head[3] = curr_entry;
-					    curr_root->head[4] = curr_entry;
-						curr_root->head[5] = curr_entry;
-						curr_root->head[6] = curr_entry;
-						curr_root->head[7] = curr_entry;
-					    curr_root->head[8] = curr_entry;
-					    curr_root->head[9] = curr_entry;
-					    curr_root->head[10] = curr_entry;
-						curr_root->head[11] = curr_entry;
-						curr_root->head[12] = curr_entry;
+						curr_root->head[k] = curr_entry;
+						// curr_root->head[1] = curr_entry;
+					    // curr_root->head[2] = curr_entry;
+					    // curr_root->head[3] = curr_entry;
+					    // curr_root->head[4] = curr_entry;
+						// curr_root->head[5] = curr_entry;
+						// curr_root->head[6] = curr_entry;
+						// curr_root->head[7] = curr_entry;
+					    // curr_root->head[8] = curr_entry;
+					    // curr_root->head[9] = curr_entry;
+					    // curr_root->head[10] = curr_entry;
+						// curr_root->head[11] = curr_entry;
+						// curr_root->head[12] = curr_entry;
 					
 						curr_root->tail = curr_entry;
 					}					
 					else{
+						curr_root->head[k] = curr_entry;
 						curr_root->tail->next = curr_entry;
 						curr_root->tail = curr_entry;
 					}
@@ -180,30 +182,36 @@ void INIT_EMPTY_BLOCK_LIST(struct ssdstate *ssd)
 					}
 	
 					if(k==i){
-						curr_root->head[0] = curr_entry;
-						curr_root->head[1] = curr_entry;
-					    curr_root->head[2] = curr_entry;
-					    curr_root->head[3] = curr_entry;
-					    curr_root->head[4] = curr_entry;
-						curr_root->head[5] = curr_entry;
-						curr_root->head[6] = curr_entry;
-						curr_root->head[7] = curr_entry;
-					    curr_root->head[8] = curr_entry;
-					    curr_root->head[9] = curr_entry;
-					    curr_root->head[10] = curr_entry;
-						curr_root->head[11] = curr_entry;
-						curr_root->head[12] = curr_entry;
+						curr_root->head[k] = curr_entry;
+					    // curr_root->head[2] = curr_entry;
+					    // curr_root->head[3] = curr_entry;
+					    // curr_root->head[4] = curr_entry;
+						// curr_root->head[5] = curr_entry;
+						// curr_root->head[6] = curr_entry;
+						// curr_root->head[7] = curr_entry;
+					    // curr_root->head[8] = curr_entry;
+					    // curr_root->head[9] = curr_entry;
+					    // curr_root->head[10] = curr_entry;
+						// curr_root->head[11] = curr_entry;
+						// curr_root->head[12] = curr_entry;
 
 						curr_root->tail = curr_entry;
+
+						curr_root->tail->pre = NULL;
 
 						curr_root->tail->phy_flash_nb = j;
 						curr_root->tail->phy_block_nb = k;
 						curr_root->tail->curr_phy_page_nb = 0;
 					}
 					else{
+						if (k <= 12)
+							curr_root->head[k] = curr_entry;
+
+						curr_entry->pre = curr_root->tail; 
 						curr_root->tail->next = curr_entry;
 						curr_root->tail = curr_entry;
-
+						if (k == (BLOCK_NB - 1))
+							curr_root->tail->next = NULL;
 						curr_root->tail->phy_flash_nb = j;
 						curr_root->tail->phy_block_nb = k;
 						curr_root->tail->curr_phy_page_nb = 0;
@@ -211,6 +219,7 @@ void INIT_EMPTY_BLOCK_LIST(struct ssdstate *ssd)
 					UPDATE_BLOCK_STATE(ssd, j, k, EMPTY_BLOCK);
 				}
 				curr_root->empty_block_nb = (unsigned int)sc->EACH_EMPTY_TABLE_ENTRY_NB;
+				printf("hao_init:%d %d\n",curr_root->head[2]->phy_flash_nb, curr_root->head[2]->phy_block_nb);
 				curr_root += 1;
 			}
 		}
@@ -437,7 +446,7 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
     int64_t EMPTY_TABLE_ENTRY_NB = sc->EMPTY_TABLE_ENTRY_NB;
     int PAGE_NB = sc->PAGE_NB;
     int PLANES_PER_FLASH = sc->PLANES_PER_FLASH;
-
+	//FILE* fp = fopen("./data/1234.dat","a");
     if(ssd->total_empty_block_nb == 0){
         printf("ERROR[%s] There is no empty block\n", __FUNCTION__);
         return NULL;
@@ -447,6 +456,7 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
 	unsigned int phy_flash_nb;
 	unsigned int phy_block_nb;
 	block_state_entry* b_s_entry;
+	int i = 0;
 
     empty_block_entry* curr_empty_block;
     empty_block_root* curr_root_entry;
@@ -455,39 +465,58 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
 
         if(mode == VICTIM_OVERALL){
             curr_root_entry = (empty_block_root*)empty_block_list + ssd->empty_block_table_index;
-
+			i = 0;
             if(curr_root_entry->empty_block_nb == 0){
                 ssd->empty_block_table_index++;
+				printf("hao_debug:GET_EMPTY_BLOC %d\n", ssd->empty_block_table_index);
                 if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
                     ssd->empty_block_table_index = 0;
                 }
                 continue;
             }
             else{
-                curr_empty_block = curr_root_entry->head[f2fs_block_type];
+                curr_empty_block = curr_root_entry->head[f2fs_block_type-101];
 
-
+				if (curr_empty_block == NULL) {
+                  	ssd->empty_block_table_index++;              //comment by hao
+                    if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
+                        ssd->empty_block_table_index = 0;
+                    }
+					continue;					
+				}
 				//add by hao for separating different I/Os
 				phy_flash_nb = curr_empty_block->phy_flash_nb;
                 phy_block_nb = curr_empty_block->phy_block_nb;				
 				b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, phy_flash_nb, phy_block_nb);
-
+						
 				if (b_s_entry->type != f2fs_block_type && b_s_entry->type != EMPTY_BLOCK) {
-					
-					curr_root_entry->head[f2fs_block_type] = curr_empty_block->next;
+
+					if (curr_empty_block->next != NULL) {
+						curr_root_entry->head[f2fs_block_type-101] = curr_empty_block->next;
+						i = 1;
+					}
+					else {
+						ssd->empty_block_table_index++;              //comment by hao
+                    	if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
+                        	ssd->empty_block_table_index = 0;
+                    	}
+					}
+
+					printf("hao_debug:777777777  %d %d %d %d\n",f2fs_block_type,b_s_entry->type,phy_flash_nb,phy_block_nb);
 					continue;
 				}
 
+				printf("hao_debug:666666666  %d %d %d %d\n",f2fs_block_type,b_s_entry->type,phy_flash_nb,phy_block_nb);
 
                 if(curr_empty_block->curr_phy_page_nb == PAGE_NB){
 
                     /* Update Empty Block List */
                     if(curr_root_entry->empty_block_nb == 1){
-                        curr_root_entry->head[f2fs_block_type] = NULL;
+                        //curr_root_entry->head[f2fs_block_type-101] = NULL;
                         curr_root_entry->empty_block_nb = 0;
                     }
                     else{
-                        curr_root_entry->head[f2fs_block_type] = curr_empty_block->next;
+                        //curr_root_entry->head[f2fs_block_type-101] = curr_empty_block->next;
                         curr_root_entry->empty_block_nb -= 1;
                     }
 
@@ -497,16 +526,16 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
                     /* Update The total number of empty block */
                     ssd->total_empty_block_nb--;
 
-                    // ssd->empty_block_table_index++;              //comment by hao
-                    // if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
-                    //     ssd->empty_block_table_index = 0;
-                    // }
+                    ssd->empty_block_table_index++;              //comment by hao
+                    if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
+                        ssd->empty_block_table_index = 0;
+                    }
                     continue;
                 }
-                // ssd->empty_block_table_index++;          //comment by hao
-                // if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
-                //     ssd->empty_block_table_index = 0;
-                // }
+                ssd->empty_block_table_index++;          //comment by hao
+                if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
+                    ssd->empty_block_table_index = 0;
+                 }
                 return curr_empty_block;
             }
         }
@@ -536,16 +565,16 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
                 continue;
             }
             else{
-                curr_empty_block = curr_root_entry->head[f2fs_block_type];
+                curr_empty_block = curr_root_entry->head[f2fs_block_type-101];
                 if(curr_empty_block->curr_phy_page_nb == PAGE_NB){
 
                     /* Update Empty Block List */
                     if(curr_root_entry->empty_block_nb == 1){
-                        curr_root_entry->head[f2fs_block_type] = NULL;
+                        curr_root_entry->head[f2fs_block_type-101] = NULL;
                         curr_root_entry->empty_block_nb = 0;
                     }
                     else{
-                        curr_root_entry->head[f2fs_block_type] = curr_empty_block->next;
+                        curr_root_entry->head[f2fs_block_type-101] = curr_empty_block->next;
                         curr_root_entry->empty_block_nb -= 1;
                     }
 
@@ -558,7 +587,7 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
                     continue;
                 }
                 else{
-                    curr_empty_block = curr_root_entry->head[f2fs_block_type];
+                    curr_empty_block = curr_root_entry->head[f2fs_block_type-101];
                 }
 
                 return curr_empty_block;
@@ -578,16 +607,16 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
                 continue;
             }
             else{
-                curr_empty_block = curr_root_entry->head[f2fs_block_type];
+                curr_empty_block = curr_root_entry->head[f2fs_block_type-101];
                 if(curr_empty_block->curr_phy_page_nb == PAGE_NB){
 
                     /* Update Empty Block List */
                     if(curr_root_entry->empty_block_nb == 1){
-                        curr_root_entry->head[f2fs_block_type] = NULL;
+                        curr_root_entry->head[f2fs_block_type-101] = NULL;
                         curr_root_entry->empty_block_nb = 0;
                     }
                     else{
-                        curr_root_entry->head[f2fs_block_type] = curr_empty_block->next;
+                        curr_root_entry->head[f2fs_block_type-101] = curr_empty_block->next;
                         curr_root_entry->empty_block_nb -= 1;
                     }
 
@@ -600,7 +629,7 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
                     continue;
                 }
                 else{
-                    curr_empty_block = curr_root_entry->head[f2fs_block_type];
+                    curr_empty_block = curr_root_entry->head[f2fs_block_type-101];
                 }
 
                 return curr_empty_block;
@@ -620,6 +649,8 @@ int INSERT_EMPTY_BLOCK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned
 
     void *empty_block_list = ssd->empty_block_list;
 
+	//block_state_entry* b_s_entry;
+
 	int mapping_index;
 	int plane_nb;
 
@@ -637,6 +668,10 @@ int INSERT_EMPTY_BLOCK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned
 	new_empty_block->phy_block_nb = phy_block_nb;
 	new_empty_block->curr_phy_page_nb = 0;
 	new_empty_block->next = NULL;
+	//while(1)
+	printf("hao_insert empty block:%d %d\n",phy_flash_nb, phy_block_nb);
+	
+	//b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, phy_flash_nb, phy_block_nb);
 
 	plane_nb = phy_block_nb % PLANES_PER_FLASH;
 	mapping_index = plane_nb * FLASH_NB + phy_flash_nb;
@@ -644,19 +679,21 @@ int INSERT_EMPTY_BLOCK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned
 	curr_root_entry = (empty_block_root*)empty_block_list + mapping_index;
 
 	if(curr_root_entry->empty_block_nb == 0){
-		curr_root_entry->head[0] = new_empty_block;
-		curr_root_entry->head[1] = new_empty_block;
-		curr_root_entry->head[2] = new_empty_block;
-		curr_root_entry->head[3] = new_empty_block;
-		curr_root_entry->head[4] = new_empty_block;
-		curr_root_entry->head[5] = new_empty_block;
-		curr_root_entry->head[6] = new_empty_block;
-		curr_root_entry->head[7] = new_empty_block;
-		curr_root_entry->head[8] = new_empty_block;
-		curr_root_entry->head[9] = new_empty_block;
-		curr_root_entry->head[10] = new_empty_block;
-		curr_root_entry->head[11] = new_empty_block;
-		curr_root_entry->head[12] = new_empty_block;
+		if (ssd->empty_head_block_index == 13)
+			ssd->empty_head_block_index = 0;
+		curr_root_entry->head[ssd->empty_head_block_index] = new_empty_block;
+		// curr_root_entry->head[1] = new_empty_block;
+		// curr_root_entry->head[2] = new_empty_block;
+		// curr_root_entry->head[3] = new_empty_block;
+		// curr_root_entry->head[4] = new_empty_block;
+		// curr_root_entry->head[5] = new_empty_block;
+		// curr_root_entry->head[6] = new_empty_block;
+		// curr_root_entry->head[7] = new_empty_block;
+		// curr_root_entry->head[8] = new_empty_block;
+		// curr_root_entry->head[9] = new_empty_block;
+		// curr_root_entry->head[10] = new_empty_block;
+		// curr_root_entry->head[11] = new_empty_block;
+		// curr_root_entry->head[12] = new_empty_block;
 
 		
 		curr_root_entry->tail = new_empty_block;
@@ -664,6 +701,7 @@ int INSERT_EMPTY_BLOCK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned
 	}
 	else{
 		curr_root_entry->tail->next = new_empty_block;
+		new_empty_block->pre =  curr_root_entry->tail;
 		curr_root_entry->tail = new_empty_block;
 		curr_root_entry->empty_block_nb++;
 	}
@@ -679,6 +717,12 @@ int INSERT_VICTIM_BLOCK(struct ssdstate *ssd, empty_block_entry* full_block)
     int PLANES_PER_FLASH = sc->PLANES_PER_FLASH;
 
     void *victim_block_list = ssd->victim_block_list;
+
+    void *empty_block_list = ssd->empty_block_list;          //add by hao
+
+    empty_block_entry* curr_empty_block;
+    empty_block_root* curr_root_entry;
+	block_state_entry* b_s_entry;
 
 	int mapping_index;
 	int plane_nb;
@@ -716,9 +760,42 @@ int INSERT_VICTIM_BLOCK(struct ssdstate *ssd, empty_block_entry* full_block)
 		curr_v_b_root->tail = new_v_b_entry;
 		curr_v_b_root->victim_block_nb++;
 	}
+	printf("hao_debug:11111111111111111111\n");
+    curr_root_entry = (empty_block_root*)empty_block_list + mapping_index;
+
+	b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, full_block->phy_flash_nb, full_block->phy_block_nb);	
+    curr_empty_block = curr_root_entry->head[b_s_entry->type-101];
+
+	if (curr_empty_block->pre == NULL && curr_empty_block->next == NULL) {
+		printf("hao_debug:22222222222222222222222\n");
+		curr_empty_block = NULL;
+		free(full_block);
+	}
+	else if (curr_empty_block->pre != NULL && curr_empty_block->next == NULL) {
+		printf("hao_debug:333333333333333333333333\n");
+		curr_empty_block = curr_empty_block->pre;
+		curr_empty_block->next = NULL;
+		free(full_block);
+	}
+	else if (curr_empty_block->next != NULL && curr_empty_block->pre == NULL) {
+		printf("hao_debug:44444444444444444444444444444\n");
+		curr_empty_block = curr_empty_block->next;
+		curr_empty_block->pre = NULL;
+		free(full_block);
+	}
+	else {
+		printf("hao_debug:5555555555555555555555555\n");
+		curr_empty_block = curr_empty_block->next;
+		curr_empty_block->pre->next = curr_empty_block->next;
+		free(full_block);
+	}
+	printf("hao_debug:888888888888\n");
+
+
+
 
 	/* Free the full empty block entry */
-	free(full_block);
+
 
 	/* Update the total number of victim block */
 	ssd->total_victim_block_nb++;
@@ -817,7 +894,7 @@ int UPDATE_BLOCK_STATE(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned
         int i;
         block_state_entry* b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, phy_flash_nb, phy_block_nb);
 
-	b_s_entry->type = type;
+		b_s_entry->type = type;
 	
         if(type == EMPTY_BLOCK){
             char *valid_array = b_s_entry->valid_array;

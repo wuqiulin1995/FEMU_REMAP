@@ -2,6 +2,7 @@
     "files.associations": {
         "vssim_config_manager.h": "c",
         "ssd.h": "c",
-        "ftl_bf.h": "c"
+        "ftl_bf.h": "c",
+        "common.h": "c"
     }
 }

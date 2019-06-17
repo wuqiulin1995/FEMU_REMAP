@@ -1,6 +1,6 @@
 /* config options */
-/* 2^FILTER_SIZE is the size of the filter in bits, i.e.,
- * size 11 = 2^11 bits = 2048 bits */
+// 2^FILTER_SIZE is the size of the filter in bits, i.e.,
+//  size 11 = 2^11 bits = 2048 bits 
 //#define FILTER_SIZE 14
 #define NUM_HASHES 2
 #define WORD_BUF_SIZE 4  // int -> 4 chars

@@ -45,6 +45,7 @@ typedef struct empty_block_entry
 	unsigned int phy_block_nb;
 	unsigned int curr_phy_page_nb;
 	struct empty_block_entry* next;
+	struct empty_block_entry* pre;
 
 }empty_block_entry;
 

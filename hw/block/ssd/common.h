@@ -31,6 +31,9 @@
 
 
 
+
+
+
 //extern int GC_MODE;
 //extern int64_t *gc_slot;
 
@@ -159,7 +162,7 @@
 
 /*New Block Type */
 
-#define DATA_BLOCK                39  //ready to change
+//#define DATA_BLOCK                39  //ready to change
 
 #define EMPTY_BLOCK               100
 
