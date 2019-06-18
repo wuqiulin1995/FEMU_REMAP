@@ -183,7 +183,12 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 
     int64_t up_start = get_ts_in_ns();
 	SSD_BLOCK_ERASE(ssd, victim_phy_flash_nb, victim_phy_block_nb);
-	UPDATE_BLOCK_STATE(ssd, victim_phy_flash_nb, victim_phy_block_nb, EMPTY_BLOCK);
+
+	ssd->empty_head_block_index++;
+	if (ssd->empty_head_block_index == 13)
+		ssd->empty_head_block_index = 0;
+
+	UPDATE_BLOCK_STATE(ssd, victim_phy_flash_nb, victim_phy_block_nb, ssd->empty_head_block_index+METADATA_BLOCK);
 	INSERT_EMPTY_BLOCK(ssd, victim_phy_flash_nb, victim_phy_block_nb);
     ssd->time_up += get_ts_in_ns() - up_start;
 

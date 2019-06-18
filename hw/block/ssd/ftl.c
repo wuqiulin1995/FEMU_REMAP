@@ -587,7 +587,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 #ifdef FIRM_IO_BUFFER
 		INCREASE_WB_FTL_POINTER(write_sects);
 #endif
-		printf("hao_debug:_FTL_WRITEaaaaaaaaaaaaaaaa %d\n", bloom_temp);
+		printf("hao_debug:_FTL_WRITEaaaaaaaaaaaaaaaaaaaaaa %d\n", bloom_temp);
 #ifdef WRITE_NOPARAL
 		ret = GET_NEW_PAGE(VICTIM_NOPARAL, empty_block_table_index, &new_ppn, f2fs_block_type);
 #else

@@ -4,5 +4,6 @@
         "ssd.h": "c",
         "ftl_bf.h": "c",
         "common.h": "c"
-    }
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
 }
