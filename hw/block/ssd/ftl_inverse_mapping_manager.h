@@ -34,7 +34,11 @@ typedef struct block_state_entry
 
 typedef struct empty_block_root
 {
+#ifdef MULTISTREAM
 	struct empty_block_entry* head[13];
+#else
+	struct empty_block_entry* head;
+#endif
 	struct empty_block_entry* tail;
 	unsigned int empty_block_nb;
 }empty_block_root;
@@ -45,7 +49,10 @@ typedef struct empty_block_entry
 	unsigned int phy_block_nb;
 	unsigned int curr_phy_page_nb;
 	struct empty_block_entry* next;
+
+#ifdef MULTISTREAM
 	struct empty_block_entry* pre;
+#endif
 
 }empty_block_entry;
 

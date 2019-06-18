@@ -34,7 +34,7 @@ void GC_CHECK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_
 	/*if(total_empty_block_nb <= FLASH_NB * PLANES_PER_FLASH)*/
 	{
 		for(i=0; i<GC_VICTIM_NB; i++){
-			printf("hao_gc_check:5555555555555555\n");
+			//printf("hao_gc_check:5555555555555555\n");
 			ret = GARBAGE_COLLECTION(ssd, -1);
 			if(ret == FAIL){
 				break;
@@ -112,8 +112,11 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 	b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, victim_phy_flash_nb, victim_phy_block_nb);
 	valid_array = b_s_entry->valid_array;
 
+#ifdef MULTISTREAM
 	f2fs_block_type = b_s_entry->type;          //add by hao
-
+#else
+	f2fs_block_type = DATA_BLOCK;
+#endif 
     int64_t cp_start = get_ts_in_ns();
 
     /* Coperd: we only need one emtpy block */
@@ -132,7 +135,7 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 		if(valid_array[i]=='V'){
 #ifdef GC_VICTIM_OVERALL
 			ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, f2fs_block_type);
-			printf("hao2222222222222222222222222222222222222\n");
+			//printf("hao2222222222222222222222222222222222222\n");
             //new_ppn = new_ppn_base;
             //new_ppn_base++;
 #else
@@ -183,12 +186,16 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 
     int64_t up_start = get_ts_in_ns();
 	SSD_BLOCK_ERASE(ssd, victim_phy_flash_nb, victim_phy_block_nb);
-
+#ifdef MULTISTREAM
 	ssd->empty_head_block_index++;
 	if (ssd->empty_head_block_index == 13)
 		ssd->empty_head_block_index = 0;
 
 	UPDATE_BLOCK_STATE(ssd, victim_phy_flash_nb, victim_phy_block_nb, ssd->empty_head_block_index+METADATA_BLOCK);
+#else
+	UPDATE_BLOCK_STATE(ssd, victim_phy_flash_nb, victim_phy_block_nb, EMPTY_BLOCK);	
+#endif
+
 	INSERT_EMPTY_BLOCK(ssd, victim_phy_flash_nb, victim_phy_block_nb);
     ssd->time_up += get_ts_in_ns() - up_start;
 

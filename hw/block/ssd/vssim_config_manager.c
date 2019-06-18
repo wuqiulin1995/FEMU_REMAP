@@ -263,7 +263,7 @@ void INIT_SSD_CONFIG(struct ssdstate *ssd)
 		sc->GC_VICTIM_NB = sc->FLASH_NB * sc->BLOCK_NB * sc->OVP / 100 / 2;
 	}
 	else{
-		sc->GC_VICTIM_NB = 1;
+		sc->GC_VICTIM_NB = 10;
 	}
 #endif
 

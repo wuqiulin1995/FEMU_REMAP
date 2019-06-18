@@ -329,7 +329,7 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
 #endif
 
 	 memcpy(ssd->meta_buf, meta, sc->sos);
-
+#ifdef MULTISTREAM
 	 t10 = (struct t10_pi_tuple*) meta;
 
 
@@ -346,7 +346,7 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
     }
 
     //printf("hao_debug:bbbbbbbb %d %d\n",t10->f2fs_new_lba, t10->f2fs_old_lba);
-
+#endif
 	return 0; 									//add by hao
 
 
