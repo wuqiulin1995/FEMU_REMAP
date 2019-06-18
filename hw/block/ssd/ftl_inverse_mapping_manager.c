@@ -486,7 +486,7 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
                 curr_empty_block = curr_root_entry->head[f2fs_block_type-101];
 
 				if (curr_empty_block == NULL) {
-					printf("hao_debug:5555555555555555 %d %d %d\n",ssd->empty_block_table_index, f2fs_block_type, b_s_entry->type);
+					printf("hao_debug:444444444444444444444 %d %d %d %d %d\n",ssd->empty_block_table_index, curr_root_entry->empty_block_nb, curr_empty_block->phy_block_nb, f2fs_block_type, b_s_entry->type);
                   	ssd->empty_block_table_index++;              //comment by hao
                     if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
                         ssd->empty_block_table_index = 0;
@@ -510,7 +510,7 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
                     //     	ssd->empty_block_table_index = 0;
                     // 	}
 					// }
-					printf("hao_debug:5555555555555555 %d %d %d\n",ssd->empty_block_table_index, f2fs_block_type, b_s_entry->type);
+					printf("hao_debug:5555555555555555 %d %d %d %d %d\n",ssd->empty_block_table_index, curr_root_entry->empty_block_nb, curr_empty_block->phy_block_nb, f2fs_block_type, b_s_entry->type);
 					//printf("hao_debug:555555555  %d %d %d %d %d %d %d\n",ssd->empty_block_table_index, f2fs_block_type, b_s_entry->type, phy_flash_nb, phy_block_nb,ssd->total_empty_block_nb, i);
 					
 					continue;
