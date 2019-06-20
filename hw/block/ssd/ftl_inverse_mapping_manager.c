@@ -62,6 +62,11 @@ void INIT_BLOCK_STATE_TABLE(struct ssdstate *ssd)
 			curr_b_s_entry->erase_count		= 0;
 			curr_b_s_entry += 1;
 		}
+// #ifdef MULTISTREAM
+// 		curr_b_s_entry->type    =     DATA_BLOCK;
+// 		curr_b_s_entry->valid_page_nb	= 0;
+// 		curr_b_s_entry->erase_count		= 0;
+// #endif	
 	}
 }
 
@@ -109,6 +114,8 @@ void INIT_EMPTY_BLOCK_LIST(struct ssdstate *ssd)
 	int type;
 	empty_block_entry* curr_entry;
 	empty_block_root* curr_root;
+
+	empty_block_entry* empty_curr_entry;
 	//FILE* ftl_block_w = fopen("./data/123.txt","a");
 	ssd->empty_block_list = (void*)calloc(PLANES_PER_FLASH * FLASH_NB, sizeof(empty_block_root));
 	if(ssd->empty_block_list == NULL){
@@ -184,11 +191,34 @@ void INIT_EMPTY_BLOCK_LIST(struct ssdstate *ssd)
 	
 					if(k==i){
 #ifdef MULTISTREAM
-						curr_root->head[k] = curr_entry;
-						type = METADATA_BLOCK;
+						empty_curr_entry = (empty_block_entry*)calloc(1, sizeof(empty_block_entry));
+						empty_curr_entry->curr_phy_page_nb = 100000;
+						empty_curr_entry->phy_block_nb = 100000;
+						empty_curr_entry->phy_flash_nb = 100000;
+						empty_curr_entry->pre = NULL;
+						empty_curr_entry->next = curr_entry;
+						curr_root->empty_head = empty_curr_entry;
+						curr_root->head[0] = empty_curr_entry;
+						curr_root->head[1] = empty_curr_entry;
+						curr_root->head[2] = empty_curr_entry;
+						curr_root->head[3] = empty_curr_entry;
+						curr_root->head[4] = empty_curr_entry;
+						curr_root->head[5] = empty_curr_entry;
+						curr_root->head[6] = empty_curr_entry;
+						curr_root->head[7] = empty_curr_entry;
+						curr_root->head[8] = empty_curr_entry;
+						curr_root->head[9] = empty_curr_entry;
+						curr_root->head[10] = empty_curr_entry;
+						curr_root->head[11] = empty_curr_entry;
+						curr_root->head[12] = empty_curr_entry;
+						type = EMPTY_BLOCK;
+						//curr_root->head[k] = curr_entry;
+						//type = METADATA_BLOCK;
+
 						curr_root->tail = curr_entry;
 
-						curr_root->tail->pre = NULL;
+						curr_root->tail->pre = empty_curr_entry;
+						curr_root->tail->next = NULL;
 #else
 						curr_root->head = curr_entry;
 						type = EMPTY_BLOCK;
@@ -201,8 +231,9 @@ void INIT_EMPTY_BLOCK_LIST(struct ssdstate *ssd)
 					else{
 #ifdef MULTISTREAM
 						if (k <= 12) {
-							curr_root->head[k] = curr_entry;
-							type = k + METADATA_BLOCK;
+							//curr_root->head[k] = curr_entry;
+							//type = k + METADATA_BLOCK;
+							type = EMPTY_BLOCK;						
 						}
 						else {
 							type = EMPTY_BLOCK;
@@ -211,10 +242,11 @@ void INIT_EMPTY_BLOCK_LIST(struct ssdstate *ssd)
 #else
 						type = EMPTY_BLOCK;
 #endif
+						curr_entry->next = NULL;
 						curr_root->tail->next = curr_entry;
 						curr_root->tail = curr_entry;
-						if (k == (BLOCK_NB - 1))
-							curr_root->tail->next = NULL;
+						// if (k == (BLOCK_NB - 1))
+						// 	curr_root->tail->next = NULL;
 						curr_root->tail->phy_flash_nb = j;
 						curr_root->tail->phy_block_nb = k;
 						curr_root->tail->curr_phy_page_nb = 0;
@@ -480,14 +512,30 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
             else{
 #ifdef MULTISTREAM
                 curr_empty_block = curr_root_entry->head[f2fs_block_type-101];
-				if (curr_empty_block == NULL) {
-					printf("hao_debug:444444444444444444444 %d %d %d %d %d\n",ssd->empty_block_table_index, curr_root_entry->empty_block_nb, curr_empty_block->phy_block_nb, f2fs_block_type, b_s_entry->type);
-                  	ssd->empty_block_table_index++;              //comment by hao
-                    if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
-                        ssd->empty_block_table_index = 0;
-                    }
-					continue;					
+
+				if(curr_empty_block == curr_root_entry->empty_head) {
+					 if (curr_empty_block->next != NULL) {
+						curr_root_entry->head[f2fs_block_type-101] = curr_empty_block->next;
+					 	i = 1;
+					 }
+					 else {
+					 	ssd->empty_block_table_index++;              //comment by hao
+                     	if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
+                         	ssd->empty_block_table_index = 0;
+                     	}
+					 }	
+					// printf("ffffffffffffffffffffffffffffffffffffffffff\n");
+					 continue;				
 				}
+
+				// if (curr_empty_block == NULL) {
+				// 	printf("hao_debug:444444444444444444444 %d %d %d %d %d\n",ssd->empty_block_table_index, curr_root_entry->empty_block_nb, curr_empty_block->phy_block_nb, f2fs_block_type, b_s_entry->type);
+                //   	ssd->empty_block_table_index++;              //comment by hao
+                //     if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
+                //         ssd->empty_block_table_index = 0;
+                //     }
+				// 	continue;					
+				// }
 				//add by hao for separating different I/Os
 				phy_flash_nb = curr_empty_block->phy_flash_nb;
                 phy_block_nb = curr_empty_block->phy_block_nb;				
@@ -495,17 +543,17 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
 						
 				if (b_s_entry->type != f2fs_block_type && b_s_entry->type != EMPTY_BLOCK) {
 
-					// if (curr_empty_block->next != NULL) {
+					 if (curr_empty_block->next != NULL) {
 						curr_root_entry->head[f2fs_block_type-101] = curr_empty_block->next;
-					// 	i = 1;
-					// }
-					// else {
-					// 	ssd->empty_block_table_index++;              //comment by hao
-                    // 	if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
-                    //     	ssd->empty_block_table_index = 0;
-                    // 	}
-					// }
-					printf("hao_debug:5555555555555555 %d %d %d %d %d\n",ssd->empty_block_table_index, curr_root_entry->empty_block_nb, curr_empty_block->phy_block_nb, f2fs_block_type, b_s_entry->type);
+					 	i = 2;
+					 }
+					 else {
+					 	ssd->empty_block_table_index++;              //comment by hao
+                     	if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
+                         	ssd->empty_block_table_index = 0;
+                     	}
+					 }
+					printf("hao_debug:5555555555555555 %d %d %d %d %d %d\n",ssd->empty_block_table_index, curr_root_entry->empty_block_nb, curr_empty_block->phy_block_nb, f2fs_block_type, b_s_entry->type,i);
 					//printf("hao_debug:555555555  %d %d %d %d %d %d %d\n",ssd->empty_block_table_index, f2fs_block_type, b_s_entry->type, phy_flash_nb, phy_block_nb,ssd->total_empty_block_nb, i);
 					
 					continue;
@@ -527,15 +575,15 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
                     /* Update Empty Block List */
                     if(curr_root_entry->empty_block_nb == 1){
 #ifdef MULTISTREAM
-                        curr_root_entry->head[f2fs_block_type-101] = NULL;
+                        //curr_root_entry->head[f2fs_block_type-101] = NULL;
 #else
 						curr_root_entry->head = NULL;
 #endif				
                         curr_root_entry->empty_block_nb = 0;
                     }
                     else{
-#ifdef MULTITREAM
-                        curr_root_entry->head[f2fs_block_type-101] = curr_empty_block->next;
+#ifdef MULTISTREAM
+                       // curr_root_entry->head[f2fs_block_type-101] = curr_empty_block->next;
 #else 
                         curr_root_entry->head = curr_empty_block->next;
 #endif
@@ -702,7 +750,10 @@ int INSERT_EMPTY_BLOCK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned
 
 	if(curr_root_entry->empty_block_nb == 0){
 #ifdef MULTISTREAM	
-		curr_root_entry->head[ssd->empty_head_block_index] = new_empty_block; 
+		curr_root_entry->empty_head->next = new_empty_block; 
+		new_empty_block->pre = curr_root_entry->empty_head;
+		new_empty_block->next = NULL;
+		printf("ccccccccccccccccccccccccccccccccccccccccc\n");
 #else
 		curr_root_entry->head = new_empty_block;
 #endif
@@ -724,9 +775,11 @@ int INSERT_EMPTY_BLOCK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned
 		curr_root_entry->empty_block_nb = 1;
 	}
 	else{
+		printf("ddddddddddddddddddddddddddddddddddd\n");
 		curr_root_entry->tail->next = new_empty_block;
 #ifdef MULTISTREAM
 		new_empty_block->pre =  curr_root_entry->tail;
+		new_empty_block->next = NULL;
 #endif
 		curr_root_entry->tail = new_empty_block;
 		curr_root_entry->empty_block_nb++;
@@ -750,8 +803,10 @@ int INSERT_VICTIM_BLOCK(struct ssdstate *ssd, empty_block_entry* full_block)
     empty_block_root* curr_root_entry;
 	block_state_entry* b_s_entry;
 
+	block_state_entry* temp_b_s_entry;
 	int mapping_index;
 	int plane_nb;
+	int find_flag = 0;
 
 	victim_block_root* curr_v_b_root;
 	victim_block_entry* new_v_b_entry;
@@ -787,40 +842,71 @@ int INSERT_VICTIM_BLOCK(struct ssdstate *ssd, empty_block_entry* full_block)
 		curr_v_b_root->victim_block_nb++;
 	}
 #ifdef MULTISTREAM
-	printf("hao_debug:11111111111111111111\n");
+	//printf("hao_debug:11111111111111111111\n");
     curr_root_entry = (empty_block_root*)empty_block_list + mapping_index;
 
 	b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, full_block->phy_flash_nb, full_block->phy_block_nb);	
-    curr_empty_block = curr_root_entry->head[b_s_entry->type-101];
+   // curr_empty_block = curr_root_entry->head[b_s_entry->type-101];
+	curr_empty_block = full_block;
+	find_flag = 0;
+	while (curr_empty_block->next != NULL) {
+		curr_empty_block = curr_empty_block->next;
+		temp_b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, curr_empty_block->phy_flash_nb, curr_empty_block->phy_block_nb);	
+		if(temp_b_s_entry->type == b_s_entry->type || temp_b_s_entry->type == EMPTY_BLOCK ) {
+			find_flag = 1;
+			break;
+		}
+	}
 
-	if (curr_empty_block->pre == NULL && curr_empty_block->next == NULL) {
-		printf("hao_debug:22222222222222222222222\n");
-		curr_root_entry->head[b_s_entry->type-101] = NULL;
+	if (find_flag == 0) {
+		printf("hao_debug:88888888888888888888888888\n");
+		curr_root_entry->head[b_s_entry->type-101] = curr_root_entry->empty_head;
+		//free(full_block);	
+	}
+	else {
+		printf("hao_debug:9999999999999999999999999 %d %d\n",curr_empty_block->phy_flash_nb, curr_empty_block->phy_block_nb);
+		curr_root_entry->head[b_s_entry->type-101] = curr_empty_block;
+	}
+
+	// if (full_block->next == NULL) {
+	// 	curr_root_entry->head[b_s_entry->type-101] = NULL;
+	// 	free(full_block);		
+	// }
+
+
+	if (full_block->pre == NULL && full_block->next == NULL) {
+		//printf("hao_debug:22222222222222222222222\n");
+		//curr_root_entry->head[b_s_entry->type-101] = NULL;
 		free(full_block);
 	}
-	else if (curr_empty_block->pre != NULL && curr_empty_block->next == NULL) {
-		printf("hao_debug:333333333333333333333333\n");
-		curr_root_entry->head[b_s_entry->type-101] = curr_empty_block->pre;
-		curr_root_entry->head[b_s_entry->type-101]->next = NULL;
+	else if (full_block->pre != NULL && full_block->next == NULL) {
+		//printf("hao_debug:333333333333333333333333\n");
+		//full_block = full_block->pre;
+		//full_block->next = NULL;
+		//curr_root_entry->head[b_s_entry->type-101] = full_block->pre;
+		//curr_root_entry->head[b_s_entry->type-101]->next = NULL;
+		//curr_root_entry->head[b_s_entry->type-101] = NULL;
+		curr_root_entry->empty_head->next = NULL;
 		free(full_block);
 	}
-	else if (curr_empty_block->next != NULL && curr_empty_block->pre == NULL) {
-		printf("hao_debug:44444444444444444444444444444\n");
-		curr_root_entry->head[b_s_entry->type-101] = curr_empty_block->next;
-		curr_root_entry->head[b_s_entry->type-101]->pre = NULL;
+	else if (full_block->next != NULL && full_block->pre == NULL) {
+		//printf("hao_debug:44444444444444444444444444444\n");		
+
+		//curr_root_entry->head[b_s_entry->type-101] = full_block->next;
+		//curr_root_entry->head[b_s_entry->type-101]->pre = NULL;
 		free(full_block);
 	}
 	else {
-		printf("hao_debug:5555555555555555555555555\n");
-		curr_root_entry->head[b_s_entry->type-101]->pre->next = curr_empty_block->next;
-		printf("hao_free_blk1:%d %d %d\n",mapping_index,curr_empty_block->phy_flash_nb, curr_empty_block->phy_block_nb);
-		curr_root_entry->head[b_s_entry->type-101] = curr_empty_block->next;
-		printf("hao_free_blk2:%d %d %d\n",mapping_index,curr_empty_block->phy_flash_nb, curr_empty_block->phy_block_nb);
-		printf("hao_free_blk3:%d %d %d\n",mapping_index, curr_root_entry->head[b_s_entry->type-101]->phy_flash_nb, curr_root_entry->head[b_s_entry->type-101]->phy_block_nb);
+		printf("hao_debug:5555555555555555555555555 %d %d\n",full_block->phy_flash_nb, full_block->phy_block_nb);
+		full_block->pre->next = full_block->next;
+		//printf("hao_free_blk1:%d %d %d\n",mapping_index,full_block->phy_flash_nb, full_block->phy_block_nb);
+		full_block->next->pre = full_block->pre;
+		//printf("hao_free_blk2:%d %d %d\n",mapping_index,full_block->phy_flash_nb, full_block->phy_block_nb);
+		//printf("hao_free_blk3:%d %d %d\n",mapping_index, curr_root_entry->head[b_s_entry->type-101]->phy_flash_nb, curr_root_entry->head[b_s_entry->type-101]->phy_block_nb);
 
 		free(full_block);
 	}
-	printf("hao_debug:888888888888\n");
+	//printf("hao_debug:888888888888\n");
 #else
 		free(full_block);
 #endif	

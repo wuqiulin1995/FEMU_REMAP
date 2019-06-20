@@ -35,6 +35,7 @@ typedef struct block_state_entry
 typedef struct empty_block_root
 {
 #ifdef MULTISTREAM
+	struct empty_block_entry* empty_head;
 	struct empty_block_entry* head[13];
 #else
 	struct empty_block_entry* head;

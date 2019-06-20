@@ -33,8 +33,9 @@ void GC_CHECK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_
 	if(ssd->total_empty_block_nb < sc->GC_THRESHOLD_BLOCK_NB)
 	/*if(total_empty_block_nb <= FLASH_NB * PLANES_PER_FLASH)*/
 	{
+
 		for(i=0; i<GC_VICTIM_NB; i++){
-			//printf("hao_gc_check:5555555555555555\n");
+			printf("hao_gc_check:66666666666666666666666\n");
 			ret = GARBAGE_COLLECTION(ssd, -1);
 			if(ret == FAIL){
 				break;
@@ -72,7 +73,7 @@ int GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
     int GC_MODE = sc->GC_MODE;
     int CHANNEL_NB = sc->CHANNEL_NB;
     int64_t *gc_slot = ssd->gc_slot;
-
+    empty_block_root* curr_root_entry;
     int64_t gc_start = get_ts_in_ns();
 
 #ifdef FTL_DEBUG
@@ -187,11 +188,16 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
     int64_t up_start = get_ts_in_ns();
 	SSD_BLOCK_ERASE(ssd, victim_phy_flash_nb, victim_phy_block_nb);
 #ifdef MULTISTREAM
-	ssd->empty_head_block_index++;
-	if (ssd->empty_head_block_index == 13)
-		ssd->empty_head_block_index = 0;
+	// ssd->empty_head_block_index++;
+	// if (ssd->empty_head_block_index == 13)
+	// 	ssd->empty_head_block_index = 0;
 
-	UPDATE_BLOCK_STATE(ssd, victim_phy_flash_nb, victim_phy_block_nb, ssd->empty_head_block_index+METADATA_BLOCK);
+	//curr_root_entry = (empty_block_root*)empty_block_list + mapping_index;
+	//if(curr_root_entry->empty_block_nb == 0)
+	//	UPDATE_BLOCK_STATE(ssd, victim_phy_flash_nb, victim_phy_block_nb, DATA_HOT_COLD_BLOCK);
+	//else
+	UPDATE_BLOCK_STATE(ssd, victim_phy_flash_nb, victim_phy_block_nb, EMPTY_BLOCK);		
+	
 #else
 	UPDATE_BLOCK_STATE(ssd, victim_phy_flash_nb, victim_phy_block_nb, EMPTY_BLOCK);	
 #endif
@@ -236,12 +242,12 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
     }
 #endif
 
-    if (ssd->gc_count % 100 == 0) {
-        printf("[%s],real_blocking_gc=%d,total_gc_cal=%d, avg_copy_pages=%d, "
-                "total_stacking_gc=%d\n", ssd->ssdname, 
-                ssd->gc_count-ssd->stacking_gc_count, ssd->gc_count, 
-                copy_page_nb, ssd->stacking_gc_count);
-    }
+    // if (ssd->gc_count % 100 == 0) {
+    //     printf("[%s],real_blocking_gc=%d,total_gc_cal=%d, avg_copy_pages=%d, "
+    //             "total_stacking_gc=%d\n", ssd->ssdname, 
+    //             ssd->gc_count-ssd->stacking_gc_count, ssd->gc_count, 
+    //             copy_page_nb, ssd->stacking_gc_count);
+    // }
 
 #ifdef MONITOR_ON
 	char szTemp[1024];
