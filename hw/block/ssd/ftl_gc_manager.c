@@ -35,7 +35,7 @@ void GC_CHECK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_
 	{
 
 		for(i=0; i<GC_VICTIM_NB; i++){
-			printf("hao_gc_check:66666666666666666666666\n");
+			//printf("hao_gc_check:66666666666666666666666\n");
 			ret = GARBAGE_COLLECTION(ssd, -1);
 			if(ret == FAIL){
 				break;
