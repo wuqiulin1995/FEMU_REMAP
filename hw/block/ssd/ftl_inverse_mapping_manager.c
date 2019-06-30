@@ -481,6 +481,8 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
     empty_block_root* curr_root_entry;
 
 	//Add by shuai
+	int count = 0;
+
 	while(ssd->total_empty_block_nb != 0)
 	{
 		if(mode == VICTIM_OVERALL)
@@ -496,6 +498,12 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
                 if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
                     ssd->empty_block_table_index = 0;
                 }
+				count++;
+				if(count >= 5*EMPTY_TABLE_ENTRY_NB)
+				{
+					//printf("ERROR[%s] There is no empty block\n", __FUNCTION__);
+					return NULL;
+				}
                 continue;
 			}
 			//1st time
@@ -844,7 +852,7 @@ int UPDATE_BLOCK_STATE(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned
 		b_s_entry->type = type;
 	
         if(type == EMPTY_BLOCK){
-            char *valid_array = b_s_entry->valid_array;
+            //char *valid_array = b_s_entry->valid_array;
                 for(i=0;i<PAGE_NB;i++){
                         UPDATE_BLOCK_STATE_ENTRY(ssd, phy_flash_nb, phy_block_nb, i, 0);
                         //valid_array[i] = '0';

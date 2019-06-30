@@ -110,7 +110,7 @@ int UPDATE_OLD_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn)
 	old_ppn = CACHE_GET_PPN(lpn);
 #else
 	old_ppn = GET_MAPPING_INFO(ssd, lpn);
-    printf("shuai_degbug: old_ppn = %d\n", old_ppn);
+    //printf("shuai_debug: old_ppn = %d\n", old_ppn);
 #endif
 
 	if(old_ppn == -1){
@@ -120,6 +120,7 @@ int UPDATE_OLD_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn)
 		return SUCCESS;
 	}
 	else{
+        //printf("shuai_debug: got you!\n");
 		UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, old_ppn), CALC_BLOCK(ssd, old_ppn), CALC_PAGE(ssd, old_ppn), INVALID);
 		UPDATE_INVERSE_MAPPING(ssd, old_ppn, -1);
 	}
@@ -129,6 +130,7 @@ int UPDATE_OLD_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn)
 
 int UPDATE_NEW_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn, int64_t ppn,	int f2fs_block_type)
 {
+    //printf("f2fs_block_type = %d\n", f2fs_block_type);
     int64_t *mapping_table = ssd->mapping_table;
 
 	/* Update Page Mapping Table */
@@ -136,6 +138,7 @@ int UPDATE_NEW_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn, int64_t ppn,	int 
 	CACHE_UPDATE_PPN(lpn, ppn);
 #else
 	mapping_table[lpn] = ppn;
+    //printf("ppn = %d\n", ppn);
 #endif
 
 	/* Update Inverse Page Mapping Table */

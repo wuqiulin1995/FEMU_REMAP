@@ -574,9 +574,9 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 		//printf("hao_debug:_FTL_WRITE%d %d %d %d %d %d\n", f2fs_type ,f2fs_temp, f2fs_ino, 
 		//											f2fs_off, f2fs_current_lpn, f2fs_old_lpn);	
 	
-		// if (f2fs_type != 2)
-		// 	bloom_temp = Bloom_filter(ssd, f2fs_ino, f2fs_off);
-		// else 
+		if (f2fs_type != 2)
+			bloom_temp = Bloom_filter(ssd, f2fs_ino, f2fs_off);
+		else 
 		 	bloom_temp = 0;
 
 
@@ -605,7 +605,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 		//printf("hao_debug:_FTL_WRITEbbbbbbbbbbbbbbbbbbbbbb %d\n", bloom_temp);
 		lpn = lba / (int64_t)SECTORS_PER_PAGE;
 		old_ppn = GET_MAPPING_INFO(ssd, lpn);
-		//printf("hao_debug:_FTL_WRITE lpn old_ppn %d %d\n",lpn, old_ppn);
+		printf("hao_debug:_FTL_WRITE lpn old_ppn %d %d\n",lpn, old_ppn);
 		n_io_info = CREATE_NAND_IO_INFO(ssd, write_page_nb, WRITE, io_page_nb, ssd->io_request_seq_nb);
 
         num_flash = CALC_FLASH(ssd, new_ppn);
@@ -659,7 +659,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 #ifdef MULTISTREAM
         if(f2fs_old_lpn != -1 && f2fs_type != 2) {
 			//printf("hao_debug:_FTL_WRITE yyyyyyy %d %d\n", f2fs_old_lpn, f2fs_type);
-			//TRIM_MAPPING_TABLE(ssd, f2fs_old_lpn);	//add by hao: Immediate invalidation
+			TRIM_MAPPING_TABLE(ssd, f2fs_old_lpn);	//add by hao: Immediate invalidation
 			//printf("hao_debug:_FTL_WRITE yyyyyyy %d\n", f2fs_old_lpn);
 		}
 #endif
