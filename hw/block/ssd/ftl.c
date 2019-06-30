@@ -592,7 +592,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 #ifdef FIRM_IO_BUFFER
 		INCREASE_WB_FTL_POINTER(write_sects);
 #endif
-		printf("hao_debug:_FTL_WRITEaaaaaaaaaaaaaaaaaaaaaa %d\n", bloom_temp);
+		//printf("hao_debug:_FTL_WRITEaaaaaaaaaaaaaaaaaaaaaa %d\n", bloom_temp);
 #ifdef WRITE_NOPARAL
 		ret = GET_NEW_PAGE(VICTIM_NOPARAL, empty_block_table_index, &new_ppn, f2fs_block_type);
 #else
@@ -602,7 +602,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 			printf("ERROR[%s] Get new page fail \n", __FUNCTION__);
 			return FAIL;
 		}
-		printf("hao_debug:_FTL_WRITEbbbbbbbbbbbbbbbbbbbbbb %d\n", bloom_temp);
+		//printf("hao_debug:_FTL_WRITEbbbbbbbbbbbbbbbbbbbbbb %d\n", bloom_temp);
 		lpn = lba / (int64_t)SECTORS_PER_PAGE;
 		old_ppn = GET_MAPPING_INFO(ssd, lpn);
 		//printf("hao_debug:_FTL_WRITE lpn old_ppn %d %d\n",lpn, old_ppn);
@@ -658,7 +658,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 
 #ifdef MULTISTREAM
         if(f2fs_old_lpn != -1 && f2fs_type != 2) {
-			printf("hao_debug:_FTL_WRITE yyyyyyy %d %d\n", f2fs_old_lpn, f2fs_type);
+			//printf("hao_debug:_FTL_WRITE yyyyyyy %d %d\n", f2fs_old_lpn, f2fs_type);
 			//TRIM_MAPPING_TABLE(ssd, f2fs_old_lpn);	//add by hao: Immediate invalidation
 			//printf("hao_debug:_FTL_WRITE yyyyyyy %d\n", f2fs_old_lpn);
 		}

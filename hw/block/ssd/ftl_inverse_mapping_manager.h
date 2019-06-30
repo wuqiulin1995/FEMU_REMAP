@@ -51,9 +51,9 @@ typedef struct empty_block_entry
 	unsigned int curr_phy_page_nb;
 	struct empty_block_entry* next;
 
-#ifdef MULTISTREAM
+/*#ifdef MULTISTREAM
 	struct empty_block_entry* pre;
-#endif
+#endif*/
 
 }empty_block_entry;
 

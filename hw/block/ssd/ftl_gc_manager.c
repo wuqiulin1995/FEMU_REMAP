@@ -29,7 +29,7 @@ void GC_CHECK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_
 	int mapping_index = plane_nb * FLASH_NB + phy_flash_nb;
 	
 #ifdef GC_TRIGGER_OVERALL
-	//printf("hao_gc_check:%d %d\n", ssd->total_empty_block_nb, sc->GC_THRESHOLD_BLOCK_NB);
+	printf("shuai_gc_check:%d %d\n", ssd->total_empty_block_nb, sc->GC_THRESHOLD_BLOCK_NB);
 	if(ssd->total_empty_block_nb < sc->GC_THRESHOLD_BLOCK_NB)
 	/*if(total_empty_block_nb <= FLASH_NB * PLANES_PER_FLASH)*/
 	{
@@ -37,6 +37,7 @@ void GC_CHECK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_
 		for(i=0; i<GC_VICTIM_NB; i++){
 			//printf("hao_gc_check:66666666666666666666666\n");
 			ret = GARBAGE_COLLECTION(ssd, -1);
+			printf("ret = %d\n", ret);
 			if(ret == FAIL){
 				break;
 			}
@@ -354,7 +355,7 @@ int SELECT_VICTIM_BLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_flash_
 #endif
 	if(curr_valid_page_nb == PAGE_NB){
 		ssd->fail_cnt++;
-	//	printf(" Fail Count : %d\n", fail_cnt);
+		printf(" Fail Count : %d\n", ssd->fail_cnt);
 		return FAIL;
 	}
 

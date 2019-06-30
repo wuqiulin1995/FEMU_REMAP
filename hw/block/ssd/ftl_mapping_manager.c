@@ -110,6 +110,7 @@ int UPDATE_OLD_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn)
 	old_ppn = CACHE_GET_PPN(lpn);
 #else
 	old_ppn = GET_MAPPING_INFO(ssd, lpn);
+    printf("shuai_degbug: old_ppn = %d\n", old_ppn);
 #endif
 
 	if(old_ppn == -1){
