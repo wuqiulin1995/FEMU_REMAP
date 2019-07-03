@@ -885,7 +885,7 @@ int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, un
 		valid_array[phy_page_nb] = 'V';
 	}
 	else if(valid == INVALID){
-		printf("shuai_debug: invalid %d %d\n", phy_flash_nb, phy_block_nb);
+		//printf("shuai_debug: invalid %d %d\n", phy_flash_nb, phy_block_nb);
 		valid_array[phy_page_nb] = 'I';
 	}
 	else if(valid == 0){
