@@ -212,7 +212,6 @@ void INIT_EMPTY_BLOCK_LIST(struct ssdstate *ssd)
 						curr_root->tail->next = NULL;
 #else
 						curr_root->head = curr_entry;
-						type = EMPTY_BLOCK;
 						curr_root->tail = curr_entry;
 #endif
 						curr_root->tail->phy_flash_nb = j;
@@ -467,7 +466,7 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
     int PLANES_PER_FLASH = sc->PLANES_PER_FLASH;
 	//FILE* fp = fopen("./data/1234.dat","a");
     if(ssd->total_empty_block_nb == 0){
-        printf("ERROR[%s] There is no empty block\n", __FUNCTION__);
+        //printf("ERROR[%s] There is no empty block\n", __FUNCTION__);
         return NULL;
     }
 
@@ -480,11 +479,14 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
     empty_block_entry* curr_empty_block;
     empty_block_root* curr_root_entry;
 
+#ifdef MULTISTREAM
 	//Add by shuai
 	int count = 0;
+#endif
 
 	while(ssd->total_empty_block_nb != 0)
 	{
+#ifdef MULTISTREAM
 		if(mode == VICTIM_OVERALL)
 		{
 			curr_root_entry = (empty_block_root*)empty_block_list + ssd->empty_block_table_index;
@@ -556,6 +558,53 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
 			}
 
 		}
+#else
+		if(mode == VICTIM_OVERALL)
+		{
+			curr_root_entry = (empty_block_root*)empty_block_list + ssd->empty_block_table_index;
+
+            if(curr_root_entry->empty_block_nb == 0){
+                ssd->empty_block_table_index++;
+                if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
+                    ssd->empty_block_table_index = 0;
+                }
+                continue;
+            }
+            else{
+                curr_empty_block = curr_root_entry->head;
+                if(curr_empty_block->curr_phy_page_nb == PAGE_NB){
+
+                    /* Update Empty Block List */
+                    if(curr_root_entry->empty_block_nb == 1){
+                        curr_root_entry->head = NULL;
+                        curr_root_entry->empty_block_nb = 0;
+                    }
+                    else{
+                        curr_root_entry->head = curr_empty_block->next;
+                        curr_root_entry->empty_block_nb -= 1;
+                    }
+
+                    /* Eject Empty Block from the list */
+                    INSERT_VICTIM_BLOCK(ssd, curr_empty_block);
+
+                    /* Update The total number of empty block */
+                    ssd->total_empty_block_nb--;
+
+                    ssd->empty_block_table_index++;
+                    if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
+                        ssd->empty_block_table_index = 0;
+                    }
+                    continue;
+                }
+                ssd->empty_block_table_index++;
+                if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
+                    ssd->empty_block_table_index = 0;
+                }
+                return curr_empty_block;
+            }
+		}
+
+#endif //MULTISTREAM
 		else if(mode == VICTIM_INCHIP){
             curr_root_entry = (empty_block_root*)empty_block_list + mapping_index;
             if(curr_root_entry->empty_block_nb == 0){
@@ -658,6 +707,7 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
     return NULL;
 }
 
+#ifdef MULTISTREAM
 int INSERT_EMPTY_BLOCK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_block_nb)
 {
     struct ssdconf *sc = &(ssd->ssdparams);
@@ -703,6 +753,54 @@ int INSERT_EMPTY_BLOCK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned
 
 	return SUCCESS;
 }
+#else
+int INSERT_EMPTY_BLOCK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_block_nb)
+{
+    struct ssdconf *sc = &(ssd->ssdparams);
+    int FLASH_NB = sc->FLASH_NB;
+    int PLANES_PER_FLASH = sc->PLANES_PER_FLASH;
+
+    void *empty_block_list = ssd->empty_block_list;
+
+	int mapping_index;
+	int plane_nb;
+
+	empty_block_root* curr_root_entry;
+	empty_block_entry* new_empty_block;
+
+	new_empty_block = (empty_block_entry*)calloc(1, sizeof(empty_block_entry));
+	if(new_empty_block == NULL){
+		printf("ERROR[%s] Alloc new empty block fail\n", __FUNCTION__);
+		return FAIL;
+	}
+
+	/* Init New empty block */
+	new_empty_block->phy_flash_nb = phy_flash_nb;
+	new_empty_block->phy_block_nb = phy_block_nb;
+	new_empty_block->curr_phy_page_nb = 0;
+	new_empty_block->next = NULL;
+
+	plane_nb = phy_block_nb % PLANES_PER_FLASH;
+	mapping_index = plane_nb * FLASH_NB + phy_flash_nb;
+
+	curr_root_entry = (empty_block_root*)empty_block_list + mapping_index;
+
+	if(curr_root_entry->empty_block_nb == 0){
+		curr_root_entry->head = new_empty_block;
+		curr_root_entry->tail = new_empty_block;
+		curr_root_entry->empty_block_nb = 1;
+	}
+	else{
+		curr_root_entry->tail->next = new_empty_block;
+		curr_root_entry->tail = new_empty_block;
+		curr_root_entry->empty_block_nb++;
+	}
+	ssd->total_empty_block_nb++;
+
+	return SUCCESS;
+}
+#endif
+
 
 int INSERT_VICTIM_BLOCK(struct ssdstate *ssd, empty_block_entry* full_block)
 {
