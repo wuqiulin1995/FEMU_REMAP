@@ -562,28 +562,28 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 
 		//add by hao
 #ifdef MULTISTREAM	
-		//f2fs_type = request1->lpns_info[write_page_nb].f2fs_type;
-		//f2fs_temp = request1->lpns_info[write_page_nb].f2fs_temp;
+		f2fs_type = request1->lpns_info[write_page_nb].f2fs_type;
+		f2fs_temp = request1->lpns_info[write_page_nb].f2fs_temp;
 		
 		
-		//f2fs_ino = request1->lpns_info[write_page_nb].f2fs_ino;
-		//f2fs_off = request1->lpns_info[write_page_nb].f2fs_off;
-		//f2fs_current_lpn = request1->lpns_info[write_page_nb].f2fs_current_lpn;
-		//f2fs_old_lpn = request1->lpns_info[write_page_nb].f2fs_old_lpn;
+		f2fs_ino = request1->lpns_info[write_page_nb].f2fs_ino;
+		f2fs_off = request1->lpns_info[write_page_nb].f2fs_off;
+		f2fs_current_lpn = request1->lpns_info[write_page_nb].f2fs_current_lpn;
+		f2fs_old_lpn = request1->lpns_info[write_page_nb].f2fs_old_lpn;
 		
-		//printf("hao_debug:_FTL_WRITE%d %d %d %d %d %d\n", f2fs_type ,f2fs_temp, f2fs_ino, 
-		//											f2fs_off, f2fs_current_lpn, f2fs_old_lpn);	
+		// printf("hao_debug:_FTL_WRITE%d %d %d %d %d %d\n", f2fs_type ,f2fs_temp, f2fs_ino, 
+		// 											f2fs_off, f2fs_current_lpn, f2fs_old_lpn);	
 	
-		//if (f2fs_type != 2)
-		//	bloom_temp = Bloom_filter(ssd, f2fs_ino, f2fs_off);
-		//else 
-		// 	bloom_temp = 0;
+		if (f2fs_type != 2)
+			bloom_temp = Bloom_filter(ssd, f2fs_ino, f2fs_off);
+		else 
+			bloom_temp = 0;
 
 
 		//printf("hao_debug:_FTL_WRITE %d\n", bloom_temp);
 
-		 //f2fs_block_type = NEW_BLOCK_TYPE(f2fs_type, f2fs_temp, bloom_temp);
-		f2fs_block_type = DATA_HOT_COLD_BLOCK;
+		f2fs_block_type = NEW_BLOCK_TYPE(f2fs_type, f2fs_temp, bloom_temp);
+		//f2fs_block_type = DATA_HOT_COLD_BLOCK;
 #else	
 		f2fs_block_type = DATA_BLOCK;
 #endif

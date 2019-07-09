@@ -50,7 +50,7 @@
 	#define GC_ON			/* Garbage Collection for PAGE MAP */
 	#define GC_TRIGGER_OVERALL
 	#define GC_VICTIM_OVERALL
-	//#define MULTISTREAM
+	#define MULTISTREAM
 	//#define WRITE_NOPARAL
 	//#define FTL_MAP_CACHE		/* FTL MAP Cache for PAGE MAP */
 #endif
