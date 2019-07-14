@@ -1183,6 +1183,9 @@ static uint16_t nvme_dsm(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     uint64_t prp1 = le64_to_cpu(cmd->prp1);
     uint64_t prp2 = le64_to_cpu(cmd->prp2);
 
+    struct ssdstate *ssd = &(n->ssd);
+
+
     if (dw11 & NVME_DSMGMT_AD) {
         uint16_t nr = (dw10 & 0xff) + 1;
         uint8_t lba_index = NVME_ID_NS_FLBAS_INDEX(ns->id_ns.flbas);
@@ -1217,6 +1220,10 @@ static uint16_t nvme_dsm(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
             if (req->status != NVME_SUCCESS)
                 return req->status;
             bitmap_clear(ns->util, slba, nlb);
+            if (n->femu_mode == FEMU_BLACKBOX_MODE) {
+                femu_discard_process(ssd, nlb << data_shift, slba << data_shift);
+            }
+
         }
     }
     return NVME_SUCCESS;
@@ -1362,6 +1369,7 @@ static uint16_t nvme_io_cmd(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
         return femu_oc_rw(n, ns, cmd, req);
     case NVME_CMD_READ:
     case NVME_CMD_WRITE:
+        //printf("hao_debug:RW command\n");
         return nvme_rw(n, ns, cmd, req);
 
     case NVME_CMD_FLUSH:
@@ -1373,9 +1381,10 @@ static uint16_t nvme_io_cmd(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
 
     case NVME_CMD_DSM:
         if (NVME_ONCS_DSM & n->oncs) {
+            printf("22222222222DSM enabled\n");
             return nvme_dsm(n, ns, cmd, req);
         }
-        printf("Coperd,DSM command\n");
+        printf("111111111111Coperd,DSM command\n");
         return NVME_INVALID_OPCODE | NVME_DNR;
 
     case NVME_CMD_COMPARE:
@@ -1386,8 +1395,9 @@ static uint16_t nvme_io_cmd(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
         return NVME_INVALID_OPCODE | NVME_DNR;
 
     case NVME_CMD_WRITE_ZEROS:
+       printf("hao_debug:WRITE_ZEROS command\n");
         if (NVME_ONCS_WRITE_ZEROS & n->oncs) {
-            printf("Coperd,Write zeros command\n");
+            printf("333333333333sCoperd,Write zeros command\n");
             return nvme_write_zeros(n, ns, cmd, req);
         }
         return NVME_INVALID_OPCODE | NVME_DNR;

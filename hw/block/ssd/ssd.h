@@ -22,4 +22,7 @@ int64_t SSD_READ(struct ssdstate *ssd, unsigned int length, int64_t sector_nb);
 void SSD_DSM_TRIM(struct ssdstate *ssd, unsigned int length, void* trim_data);
 int SSD_IS_SUPPORT_TRIM(struct ssdstate *ssd);
 
+int femu_discard_process(struct ssdstate *ssd, uint32_t length, int64_t sector_nb);
+
+
 #endif

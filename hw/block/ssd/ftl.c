@@ -508,7 +508,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 	if(sector_nb + length > SECTOR_NB){
 		printf("ERROR[%s] Exceed Sector number\n", __FUNCTION__);
                 return FAIL;
-        }
+    }
 	else{
 		ssd->io_alloc_overhead = ALLOC_IO_REQUEST(ssd, sector_nb, length, WRITE, &io_page_nb);
 	}
