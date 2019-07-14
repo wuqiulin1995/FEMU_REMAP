@@ -361,6 +361,7 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
                             t10->guard_tag, t10->app_tag, t10->ref_tag,
                             t10->f2fs_ino, t10->f2fs_off, t10->f2fs_temp, t10->f2fs_type,
                             t10->f2fs_old_lba, t10->f2fs_new_lba);
+    
  
 	 return 0;
  #endif
