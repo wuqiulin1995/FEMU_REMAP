@@ -9,7 +9,35 @@
 #include <assert.h>
 #include "god.h"
 
+#ifdef WS_COUNT
+void INIT_WS_COUNT(struct ssdstate *ssd)
+{
+    ssd->ws_gc_count=0;
+    ssd->ws_erase_count=0;
+    
+    ssd->ws_total_read_count=0;
+    ssd->ws_total_write_count=0;
+    
 
+    ssd->ws_gc_read_count=0;
+    ssd->ws_gc_write_count=0;
+
+	ssd->ws_time=0;
+	ssd->ws_temp=0;
+    return;
+}
+
+void ws_print(struct ssdstate *ssd)
+{
+    printf("\n");
+    printf("ssd->ws_total_read_count = %d\n", ssd->ws_total_read_count);
+    printf("ssd->ws_total_write_count = %d\n", ssd->ws_total_write_count);
+    printf("ssd->ws_gc_read_count = %d\n", ssd->ws_gc_read_count);
+    printf("ssd->ws_gc_write_count = %d\n", ssd->ws_gc_write_count);
+    printf("ssd->ws_erase_count = %d\n", ssd->ws_erase_count);
+    printf("\n");
+}
+#endif //WS_COUNT
 
 void INIT_SSD_CONFIG(struct ssdstate *ssd)
 {

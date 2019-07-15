@@ -29,6 +29,8 @@
 
 #define TYPE_BASE 101
 
+#define WS_COUNT
+
 #define EXT4
 
 // parameters for EXT4

@@ -240,9 +240,6 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
 #endif  
 
 
-
-
-
 #if 0                                 //changed by hao: 0--->1
     if (!ssd->meta_fname) {      // Default meta file
         ssd->meta_auto_gen = 1;

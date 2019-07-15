@@ -252,6 +252,22 @@ struct ssdstate {
     int64_t total_victim_block_nb;
     unsigned int empty_block_table_index;
 
+#ifdef WS_COUNT
+    /* Statistic by WangShuai*/
+    //Unit: Page
+    int ws_gc_count;
+    int ws_erase_count;
+
+    int ws_total_read_count;
+    int ws_total_write_count;
+    
+
+    int ws_gc_read_count;
+    int ws_gc_write_count;
+
+    int64_t ws_time;    //Used for printf.
+    int64_t ws_temp;    //Used for printf.
+#endif
     /* Average IO Time */
     double avg_write_delay;
     double total_write_count;
@@ -477,5 +493,11 @@ void INIT_SSD_CONFIG(struct ssdstate *ssd);
 int64_t CALC_DA_PM_ENTRY_NB(struct ssdstate *ssd);
 int64_t CALC_DA_BM_ENTRY_NB(struct ssdstate *ssd);
 #endif
+
+#ifdef WS_COUNT
+//Add by shuai. Statistics.
+void INIT_WS_COUNT(struct ssdstate *ssd);
+void ws_print(struct ssdstate *ssd);
+#endif //WS_COUNT
 
 #endif

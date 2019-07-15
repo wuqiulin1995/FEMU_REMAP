@@ -41,7 +41,6 @@ unsigned int CALC_PAGE(struct ssdstate *ssd, int64_t ppn);
 
 void INIT_METADATA_TABLE(struct ssdstate *ssd);
 
-
 int ftl_meta_state_get(struct ssdstate *ssd, uint64_t lpn,
         uint32_t *state);
 int ftl_meta_write(struct ssdstate *ssd, void *meta, struct request_f2fs *request1,  uint64_t i);

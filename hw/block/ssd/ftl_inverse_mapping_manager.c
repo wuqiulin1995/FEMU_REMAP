@@ -500,7 +500,7 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
 			//printf("%d %p %d\n", ssd->empty_block_table_index, curr_root_entry->empty_head, curr_root_entry->empty_block_nb);
 			//printf("%d\n",ssd->total_empty_block_nb);
 			//no more space
-			if((curr_root_entry->head[f2fs_block_type-101] == NULL) 
+			if((curr_root_entry->head[f2fs_block_type-TYPE_BASE] == NULL) 
 				&& (curr_root_entry->empty_head == NULL))
 			{
 				ssd->empty_block_table_index++;
@@ -516,7 +516,7 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
                 continue;
 			}
 			//1st time
-			else if(curr_root_entry->head[f2fs_block_type-101] == NULL)
+			else if(curr_root_entry->head[f2fs_block_type-TYPE_BASE] == NULL)
 			{
 				if(curr_root_entry->empty_head == NULL)
 				{
@@ -531,7 +531,7 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
 					curr_empty_block = curr_root_entry->empty_head;
 					curr_root_entry->empty_head = curr_root_entry->empty_head->next;
 					curr_empty_block->next = NULL;
-					curr_root_entry->head[f2fs_block_type-101] = curr_empty_block;
+					curr_root_entry->head[f2fs_block_type-TYPE_BASE] = curr_empty_block;
 					curr_root_entry->empty_block_nb -= 1;
 
 					ssd->empty_block_table_index++;
@@ -541,11 +541,11 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
                 	return curr_empty_block;
 				}				
 			}
-			else if(curr_root_entry->head[f2fs_block_type-101] != NULL)
+			else if(curr_root_entry->head[f2fs_block_type-TYPE_BASE] != NULL)
 			{
-				curr_empty_block = curr_root_entry->head[f2fs_block_type-101];
+				curr_empty_block = curr_root_entry->head[f2fs_block_type-TYPE_BASE];
 				if(curr_empty_block->curr_phy_page_nb == PAGE_NB){
-					curr_root_entry->head[f2fs_block_type-101] = NULL;
+					curr_root_entry->head[f2fs_block_type-TYPE_BASE] = NULL;
 					/* Eject Empty Block from the list */
 					 INSERT_VICTIM_BLOCK(ssd, curr_empty_block);
 					 /* Update The total number of empty block */
@@ -638,16 +638,16 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
                 continue;
             }
             else{
-                // curr_empty_block = curr_root_entry->head[f2fs_block_type-101];
+                // curr_empty_block = curr_root_entry->head[f2fs_block_type-TYPE_BASE];
                 // if(curr_empty_block->curr_phy_page_nb == PAGE_NB){
 
                 //     /* Update Empty Block List */
                 //     if(curr_root_entry->empty_block_nb == 1){
-                //         curr_root_entry->head[f2fs_block_type-101] = NULL;
+                //         curr_root_entry->head[f2fs_block_type-TYPE_BASE] = NULL;
                 //         curr_root_entry->empty_block_nb = 0;
                 //     }
                 //     else{
-                //         curr_root_entry->head[f2fs_block_type-101] = curr_empty_block->next;
+                //         curr_root_entry->head[f2fs_block_type-TYPE_BASE] = curr_empty_block->next;
                 //         curr_root_entry->empty_block_nb -= 1;
                 //     }
 
@@ -660,7 +660,7 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
                 //     continue;
                 // }
                 // else{
-                //     curr_empty_block = curr_root_entry->head[f2fs_block_type-101];
+                //     curr_empty_block = curr_root_entry->head[f2fs_block_type-TYPE_BASE];
                 // }
 
                 return curr_empty_block;
@@ -680,16 +680,16 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
                 continue;
             }
             else{
-                // curr_empty_block = curr_root_entry->head[f2fs_block_type-101];
+                // curr_empty_block = curr_root_entry->head[f2fs_block_type-TYPE_BASE];
                  if(curr_empty_block->curr_phy_page_nb == PAGE_NB){
 
                 //     /* Update Empty Block List */
                 //     if(curr_root_entry->empty_block_nb == 1){
-                //         curr_root_entry->head[f2fs_block_type-101] = NULL;
+                //         curr_root_entry->head[f2fs_block_type-TYPE_BASE] = NULL;
                 //         curr_root_entry->empty_block_nb = 0;
                 //     }
                 //     else{
-                //         curr_root_entry->head[f2fs_block_type-101] = curr_empty_block->next;
+                //         curr_root_entry->head[f2fs_block_type-TYPE_BASE] = curr_empty_block->next;
                 //         curr_root_entry->empty_block_nb -= 1;
                 //     }
 
@@ -702,7 +702,7 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
                     continue;
                 }
                 // else{
-                //     curr_empty_block = curr_root_entry->head[f2fs_block_type-101];
+                //     curr_empty_block = curr_root_entry->head[f2fs_block_type-TYPE_BASE];
                 // }
 
                 return curr_empty_block;

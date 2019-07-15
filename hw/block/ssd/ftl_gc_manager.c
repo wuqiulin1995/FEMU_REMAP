@@ -158,7 +158,18 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 			/* Write the Valid Page*/
 			//n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_WRITE, -1, ssd->io_request_seq_nb);
 			SSD_PAGE_WRITE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), n_io_info);
+#ifdef WS_COUNT
+			ssd->ws_gc_read_count++;
+			ssd->ws_gc_write_count++;
 
+			ssd->ws_temp = get_ts_in_ns();
+			if(ssd->ws_temp - ssd->ws_time >= 1e9 * 10)
+			{
+				ws_print(ssd);
+			}
+			ssd->ws_time = ssd->ws_temp;
+
+#endif //WS_COUNT
 			//old_ppn =  victim_block_base_ppn  + i;
             old_ppn = victim_phy_flash_nb*sc->PAGES_PER_FLASH + victim_phy_block_nb*sc->PAGE_NB + i;
 
@@ -207,6 +218,19 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
     ssd->time_up += get_ts_in_ns() - up_start;
 
 	ssd->gc_count++;
+
+#ifdef WS_COUNT
+	ssd->ws_gc_count++;
+	ssd->ws_erase_count++;
+
+	ssd->ws_temp = get_ts_in_ns();
+	if(ssd->ws_temp - ssd->ws_time >= 1e9 * 10)
+	{
+		ws_print(ssd);
+	}
+	ssd->ws_time = ssd->ws_temp;
+
+#endif
 
     /* Coperd: keep trace of #gc of last time */
     ssd->mygc_cnt += 1; 
@@ -262,8 +286,7 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 	printf("[%s] Complete\n",__FUNCTION__);
 #endif
 
-    ssd->time_gc += get_ts_in_ns() - gc_start;
-
+    ssd->time_gc += get_ts_in_ns() - gc_start;	
 	return SUCCESS;
 }
 

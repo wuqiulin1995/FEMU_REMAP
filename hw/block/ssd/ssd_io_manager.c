@@ -108,6 +108,9 @@ int SSD_IO_INIT(struct ssdstate *ssd)
 int64_t SSD_PAGE_WRITE(struct ssdstate *ssd, unsigned int flash_nb,
         unsigned int block_nb, unsigned int page_nb, nand_io_info* n_io_info)
 {
+#ifdef WS_COUNT
+	ssd->ws_total_write_count++;
+#endif		
     struct ssdconf *sc = &(ssd->ssdparams);
     int CHANNEL_NB = sc->CHANNEL_NB;
     int PLANES_PER_FLASH = sc->PLANES_PER_FLASH;
@@ -187,6 +190,10 @@ int64_t SSD_PAGE_PARTIAL_WRITE(struct ssdstate *ssd, unsigned int old_flash_nb, 
 	unsigned int old_page_nb, unsigned int new_flash_nb, unsigned int new_block_nb, \
 	unsigned int new_page_nb, nand_io_info* n_io_info)
 {
+#ifdef WS_COUNT
+	ssd->ws_total_read_count++;
+	ssd->ws_total_write_count++;
+#endif	
     struct ssdconf *sc = &(ssd->ssdparams);
     int CHANNEL_NB = sc->CHANNEL_NB;
     int PLANES_PER_FLASH = sc->PLANES_PER_FLASH;
@@ -291,6 +298,9 @@ int64_t SSD_PAGE_PARTIAL_WRITE(struct ssdstate *ssd, unsigned int old_flash_nb, 
 int64_t SSD_PAGE_READ(struct ssdstate *ssd, unsigned int flash_nb, 
         unsigned int block_nb, unsigned int page_nb, nand_io_info* n_io_info)
 {
+#ifdef WS_COUNT
+	ssd->ws_total_read_count++;
+#endif	
     struct ssdconf *sc = &(ssd->ssdparams);
     int CHANNEL_NB = sc->CHANNEL_NB;
     int PLANES_PER_FLASH = sc->PLANES_PER_FLASH;
