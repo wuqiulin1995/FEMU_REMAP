@@ -27,11 +27,18 @@
 #define FILTER_SIZE 14
 #define FILTER_SIZE_BYTES (1 << (FILTER_SIZE - 3))
 
+#define TYPE_BASE 101
 
+#define EXT4
 
+// parameters for EXT4
+#ifdef EXT4
 
+#define TYPE_NUM 4	//The number of Empty heads.
+#define BG_NUM 4   	//The number of blockgroups in EXT4 FS.
+#define BG_SIZE (2*1024*1024*2)  // secotrs per 2GB
 
-
+#endif //EXT4
 
 
 //extern int GC_MODE;
@@ -170,7 +177,7 @@
 #define METADATA_BLOCK            101
 
 
-
+#ifndef EXT4
 #define DATA_HOT_HOT_BLOCK         102
 #define DATA_HOT_COLD_BLOCK        103
 #define DATA_WARM_HOT_BLOCK        104
@@ -185,7 +192,7 @@
 #define NODE_WARM_COLD_BLOCK       111
 #define NODE_COLD_HOT_BLOCK        112
 #define NODE_COLD_COLD_BLOCK       113
-
+#endif //EXT4
 
 
 /* GC Copy Valid Page Type */

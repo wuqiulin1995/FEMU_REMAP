@@ -36,10 +36,14 @@ typedef struct empty_block_root
 {
 #ifdef MULTISTREAM
 	struct empty_block_entry* empty_head;
+#ifdef EXT4
+	struct empty_block_entry* head[TYPE_NUM];
+#else //EXT4
 	struct empty_block_entry* head[13];
-#else
+#endif //EXT4
+#else //MULTISTREAM
 	struct empty_block_entry* head;
-#endif
+#endif //MULTISTREAM
 	struct empty_block_entry* tail;
 	unsigned int empty_block_nb;
 }empty_block_root;

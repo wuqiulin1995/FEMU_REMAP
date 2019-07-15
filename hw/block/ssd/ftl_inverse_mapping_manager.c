@@ -192,6 +192,13 @@ void INIT_EMPTY_BLOCK_LIST(struct ssdstate *ssd)
 					if(k==i){
 #ifdef MULTISTREAM
 						curr_root->empty_head = curr_entry;
+#ifdef EXT4
+						int count;
+						for(count=0; count<TYPE_NUM; count++)
+						{
+							curr_root->head[count] = NULL;
+						}
+#else //EXT4
 						curr_root->head[0] = NULL;
 						curr_root->head[1] = NULL;
 						curr_root->head[2] = NULL;
@@ -205,7 +212,7 @@ void INIT_EMPTY_BLOCK_LIST(struct ssdstate *ssd)
 						curr_root->head[10] = NULL;
 						curr_root->head[11] = NULL;
 						curr_root->head[12] = NULL;
-
+#endif //EXT4
 						curr_root->tail = curr_entry;
 
 						//curr_root->tail->pre = empty_curr_entry;

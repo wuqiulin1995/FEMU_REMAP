@@ -562,6 +562,12 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 
 		//add by hao
 #ifdef MULTISTREAM	
+
+#ifdef EXT4
+		
+		f2fs_block_type = (lba / BG_SIZE) % TYPE_NUM + TYPE_BASE;
+
+#else //EXT4
 		f2fs_type = request1->lpns_info[write_page_nb].f2fs_type;
 		f2fs_temp = request1->lpns_info[write_page_nb].f2fs_temp;
 		
@@ -584,9 +590,10 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 
 		f2fs_block_type = NEW_BLOCK_TYPE(f2fs_type, f2fs_temp, bloom_temp);
 		//f2fs_block_type = DATA_HOT_COLD_BLOCK;
-#else	
+#endif	//EXT4
+#else	//MULTISTREAM	
 		f2fs_block_type = DATA_BLOCK;
-#endif
+#endif	//MULTISTREAM	 
 
 		//printf("hao_debug:_FTL_WRITE f2fs_block_type %d\n", f2fs_block_type);
 #ifdef FIRM_IO_BUFFER
@@ -697,7 +704,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 #endif
 	return max_need_to_emulate_tt; 
 }
-
+#ifndef EXT4
 int NEW_BLOCK_TYPE(uint64_t f2fs_type, uint64_t f2fs_temp, uint64_t bloom_temp) {
 
 int block_type = EMPTY_BLOCK;
@@ -786,4 +793,4 @@ return block_type;
 
 
 }
-
+#endif //EXT4
