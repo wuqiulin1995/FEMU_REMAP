@@ -163,11 +163,11 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 			ssd->ws_gc_write_count++;
 
 			ssd->ws_temp = get_ts_in_ns();
-			if(ssd->ws_temp - ssd->ws_time >= 1e9 * 10)
+			if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
 			{
 				ws_print(ssd);
+				ssd->ws_time = ssd->ws_temp;
 			}
-			ssd->ws_time = ssd->ws_temp;
 
 #endif //WS_COUNT
 			//old_ppn =  victim_block_base_ppn  + i;
@@ -224,11 +224,11 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 	ssd->ws_erase_count++;
 
 	ssd->ws_temp = get_ts_in_ns();
-	if(ssd->ws_temp - ssd->ws_time >= 1e9 * 10)
+	if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
 	{
 		ws_print(ssd);
+		ssd->ws_time = ssd->ws_temp;
 	}
-	ssd->ws_time = ssd->ws_temp;
 
 #endif
 

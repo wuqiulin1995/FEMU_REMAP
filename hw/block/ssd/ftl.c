@@ -53,7 +53,6 @@ extern int64_t blocking_to;
 //extern int64_t mycopy_page_nb;
 //extern FILE *statfp;
 
-
 #if 0
 int64_t get_total_free_pages()
 {
@@ -393,11 +392,11 @@ int64_t _FTL_READ(struct ssdstate *ssd, int64_t sector_nb, unsigned int length)
 		cur_need_to_emulate_tt = SSD_PAGE_READ(ssd, num_flash, num_blk, CALC_PAGE(ssd, ppn), n_io_info);
 #ifdef WS_COUNT
 	ssd->ws_temp = get_ts_in_ns();
-	if(ssd->ws_temp - ssd->ws_time >= 1e9 * 10)
+	if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
 	{
 		ws_print(ssd);
+		ssd->ws_time = ssd->ws_temp;
 	}
-	ssd->ws_time = ssd->ws_temp;
 #endif
         if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
             max_need_to_emulate_tt = cur_need_to_emulate_tt;
@@ -656,11 +655,11 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 		}
 #ifdef WS_COUNT
 	ssd->ws_temp = get_ts_in_ns();
-	if(ssd->ws_temp - ssd->ws_time >= 1e9 * 10)
+	if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
 	{
 		ws_print(ssd);
+		ssd->ws_time = ssd->ws_temp;
 	}
-	ssd->ws_time = ssd->ws_temp;
 #endif
         if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
             max_need_to_emulate_tt = cur_need_to_emulate_tt;
