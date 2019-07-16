@@ -31,7 +31,7 @@
 
 #define WS_COUNT
 #ifdef WS_COUNT
-#define PRINT_INTERVAL 10	//输出的时间间隔（秒）
+#define PRINT_INTERVAL 60	//输出的时间间隔（秒）
 #endif
 
 #define EXT4

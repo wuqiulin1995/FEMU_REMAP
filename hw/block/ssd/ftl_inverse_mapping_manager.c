@@ -473,7 +473,7 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
     int PLANES_PER_FLASH = sc->PLANES_PER_FLASH;
 	//FILE* fp = fopen("./data/1234.dat","a");
     if(ssd->total_empty_block_nb == 0){
-        //printf("ERROR[%s] There is no empty block\n", __FUNCTION__);
+        printf("111111ERROR[%s] There is no empty block\n", __FUNCTION__);
         return NULL;
     }
 
@@ -510,7 +510,7 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
 				count++;
 				if(count >= 5*EMPTY_TABLE_ENTRY_NB)
 				{
-					//printf("ERROR[%s] There is no empty block\n", __FUNCTION__);
+					printf("222222ERROR[%s] There is no empty block %d\n", __FUNCTION__,ssd->total_empty_block_nb);
 					return NULL;
 				}
                 continue;

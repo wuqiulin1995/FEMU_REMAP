@@ -1023,9 +1023,9 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     req->is_write = (rw->opcode == NVME_CMD_WRITE) ? 1 : 0;
 
     is_write = (rw->opcode == NVME_CMD_WRITE) ? 1 : 0;
-    //printf("hao: nvme_rw\n");
+    //printf("hao: nvme_rw %d\n",is_write);
 
-    msl = g_malloc0(sc->sos * 512);   //hao:â‘?for metadata alloc space, assume a request max contain 256 pages
+    msl = g_malloc0(sc->sos * 512);   //hao:ï¿½?for metadata alloc space, assume a request max contain 256 pages
     if (!msl) {
         printf("femu_oc_rw: ENOMEM\n");
         return -ENOMEM;
