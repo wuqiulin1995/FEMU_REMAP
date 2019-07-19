@@ -31,7 +31,8 @@
 
 #define WS_COUNT
 #ifdef WS_COUNT
-#define PRINT_INTERVAL 60	//输出的时间间隔（秒）
+#define PRINT_INTERVAL 10	//输出的时间间隔（秒）
+//#define OUTPOU_FILE "~/4head_counter.dat"
 #endif
 
 #define EXT4

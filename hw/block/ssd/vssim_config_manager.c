@@ -29,6 +29,7 @@ void INIT_WS_COUNT(struct ssdstate *ssd)
 
 void ws_print(struct ssdstate *ssd)
 {
+	//FILE *OUTPOU_FILE 
     printf("\n");
     printf("ssd->ws_total_read_count = %d\n", ssd->ws_total_read_count);
     printf("ssd->ws_total_write_count = %d\n", ssd->ws_total_write_count);

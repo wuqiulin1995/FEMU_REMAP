@@ -1381,7 +1381,7 @@ static uint16_t nvme_io_cmd(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
 
     case NVME_CMD_DSM:
         if (NVME_ONCS_DSM & n->oncs) {
-            printf("22222222222DSM enabled\n");
+            //printf("22222222222DSM enabled\n");
             return nvme_dsm(n, ns, cmd, req);
         }
         printf("111111111111Coperd,DSM command\n");

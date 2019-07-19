@@ -412,7 +412,7 @@ int femu_discard_process(struct ssdstate *ssd, uint32_t length, int64_t sector_n
 	unsigned int write_sects;
 
 	unsigned int ret = FAIL;
-    printf("hao_dubug4444444444444: discard start %d len %d\n",sector_nb, length);
+    //printf("hao_dubug4444444444444: discard start %d len %d\n",sector_nb, length);
 
     /* 
      * Coperd: since the whole I/O submission path is single threaded, it's
@@ -440,7 +440,7 @@ int femu_discard_process(struct ssdstate *ssd, uint32_t length, int64_t sector_n
 		//printf("hao_debug:_FTL_WRITE lpn old_ppn %d %d\n",lpn, old_ppn);
 
 		if((left_skip || right_skip) && (old_ppn != -1)){
-            printf("hao_dubug4444444444444: ssd page partial write\n");
+            //printf("hao_dubug4444444444444: ssd page partial write\n");
             /*cur_need_to_emulate_tt = SSD_PAGE_PARTIAL_WRITE(ssd,
 				CALC_FLASH(ssd, old_ppn), CALC_BLOCK(ssd, old_ppn), CALC_PAGE(ssd, old_ppn),
 				CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn),
