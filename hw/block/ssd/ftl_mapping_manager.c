@@ -149,6 +149,27 @@ int UPDATE_NEW_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn, int64_t ppn,	int 
 	return SUCCESS;
 }
 
+int UPDATE_NEW_PAGE_MAPPING2(struct ssdstate *ssd, int64_t lpn, int64_t ppn,	int f2fs_block_type)
+{
+    //printf("f2fs_block_type = %d\n", f2fs_block_type);
+    int64_t *mapping_table = ssd->mapping_table;
+
+	/* Update Page Mapping Table */
+#ifdef FTL_MAP_CACHE
+	CACHE_UPDATE_PPN(lpn, ppn);
+#else
+	mapping_table[lpn] = ppn;
+    //printf("ppn = %d\n", ppn);
+#endif
+
+	/* Update Inverse Page Mapping Table */
+	UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, ppn), CALC_BLOCK(ssd, ppn), CALC_PAGE(ssd, ppn), PRE_FREE);
+	UPDATE_BLOCK_STATE(ssd, CALC_FLASH(ssd, ppn), CALC_BLOCK(ssd, ppn), f2fs_block_type);
+	UPDATE_INVERSE_MAPPING(ssd, ppn, lpn);
+
+	return SUCCESS;
+}
+
 
 void TRIM_MAPPING_TABLE(struct ssdstate *ssd, int64_t f2fs_old_lpn) {
 	
@@ -330,7 +351,7 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
 #endif
 
 	 memcpy(ssd->meta_buf, meta, sc->sos);
-#ifdef MULTISTREAM
+//#ifdef MULTISTREAM
 	 t10 = (struct t10_pi_tuple*) meta;
 
 
@@ -347,7 +368,7 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
     }
 
     //printf("hao_debug:bbbbbbbb %d %d\n",t10->f2fs_new_lba, t10->f2fs_old_lba);
-#endif
+//#endif
 	return 0; 									//add by hao
 
 

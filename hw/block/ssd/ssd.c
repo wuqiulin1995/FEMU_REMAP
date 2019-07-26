@@ -457,7 +457,15 @@ int femu_discard_process(struct ssdstate *ssd, uint32_t length, int64_t sector_n
 		remain -= write_sects;
 		left_skip = 0;
 	}
+
+    ws_print(ssd);
     
+    ssd->ws_old_new_e=0;   //old lpn == new lpn
+    ssd->ws_old_new_ne=0;  //old lpn != new lpn
+    ssd->ws_user_page_write_between_trim=0;
+    ssd->ws_gc_page_write_between_trim=0;
+	ssd->ws_gc_old_lpn_count=0;
+
 	return true;     
 }
 

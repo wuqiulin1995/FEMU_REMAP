@@ -24,19 +24,49 @@ void INIT_WS_COUNT(struct ssdstate *ssd)
 
 	ssd->ws_time=0;
 	ssd->ws_temp=0;
+
+	ssd->ws_old_new_e=0;   //old lpn == new lpn
+    ssd->ws_old_new_ne=0;  //old lpn != new lpn
+    ssd->ws_user_page_write_between_trim=0;
+    ssd->ws_gc_page_write_between_trim=0;
+	ssd->ws_gc_old_lpn_count=0;
+
+	FILE *fout = NULL; 
+	fout = fopen(OUTPUT_FILENAME, "w");
+	if(fout == NULL)
+	{
+		printf("Error: Output file open error\n");
+		getchar();
+	}
+	fprintf(fout, "GC迁移的页总数量, GC迁移的old页, 用户写入数据量(页), GC写入数据量(页), old lpn==new lpn, old lpn!=new lpn,\n");
+	fclose(fout);
     return;
 }
 
 void ws_print(struct ssdstate *ssd)
 {
 	//FILE *OUTPOU_FILE 
-    printf("\n");
+    /*printf("\n");
     printf("ssd->ws_total_read_count = %d\n", ssd->ws_total_read_count);
     printf("ssd->ws_total_write_count = %d\n", ssd->ws_total_write_count);
     printf("ssd->ws_gc_read_count = %d\n", ssd->ws_gc_read_count);
     printf("ssd->ws_gc_write_count = %d\n", ssd->ws_gc_write_count);
     printf("ssd->ws_erase_count = %d\n", ssd->ws_erase_count);
-    printf("\n");
+    printf("\n");*/
+	FILE *fout = NULL; 
+	fout = fopen(OUTPUT_FILENAME, "a");
+	if(fout == NULL)
+	{
+		printf("Error: Output file open error\n");
+		getchar();
+	}
+	fprintf(fout, "%d, %d, %d, %d, %d, %d,\n", ssd->ws_gc_write_count, 
+	ssd->ws_gc_old_lpn_count, ssd->ws_user_page_write_between_trim, ssd->ws_gc_page_write_between_trim,
+	ssd->ws_old_new_e, ssd->ws_old_new_ne);
+	fflush(fout);
+	//fprintf(fout, "GC迁移的页总数量, GC迁移的old页, 用户写入数据量(页), GC写入数据量(页), old lpn==new lpn, old lpn!=new lpn,\n");
+	fclose(fout);
+	return;
 }
 #endif //WS_COUNT
 

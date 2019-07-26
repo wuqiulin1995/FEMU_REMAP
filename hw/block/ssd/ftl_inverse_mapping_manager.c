@@ -251,6 +251,7 @@ void INIT_EMPTY_BLOCK_LIST(struct ssdstate *ssd)
 		ssd->total_empty_block_nb = (int64_t)BLOCK_MAPPING_ENTRY_NB;
 		ssd->empty_block_table_index = 0;
 	}
+	// printf("*******ssd->total_empty_block_nb = %ld\n******", ssd->total_empty_block_nb);
 }
 
 void INIT_VICTIM_BLOCK_LIST(struct ssdstate *ssd)
@@ -472,6 +473,7 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
     int PAGE_NB = sc->PAGE_NB;
     int PLANES_PER_FLASH = sc->PLANES_PER_FLASH;
 	//FILE* fp = fopen("./data/1234.dat","a");
+	//printf("*******ssd->total_empty_block_nb = %ld\n******", ssd->total_empty_block_nb);
     if(ssd->total_empty_block_nb == 0){
         printf("111111ERROR[%s] There is no empty block\n", __FUNCTION__);
         return NULL;
@@ -996,13 +998,18 @@ int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, un
 	else if(valid == 0){
 		valid_array[phy_page_nb] = '0';
 	}
+	else if(valid == PRE_FREE)
+	{
+		valid_array[phy_page_nb] = 'P';
+	}
+	
 	else{
 		printf("ERROR[%s] Wrong valid value\n", __FUNCTION__);
 	}
 
 	/* Update valid_page_nb */
 	for(i=0;i<PAGE_NB;i++){
-		if(valid_array[i] == 'V'){
+		if(valid_array[i] == 'V' || valid_array[i] == 'P'){
 			valid_count++;
 		}
 	}

@@ -261,12 +261,19 @@ struct ssdstate {
     int ws_total_read_count;
     int ws_total_write_count;
     
-
     int ws_gc_read_count;
     int ws_gc_write_count;
 
     int64_t ws_time;    //Used for printf.
     int64_t ws_temp;    //Used for printf.
+
+    int ws_old_new_e;   //old lpn == new lpn
+    int ws_old_new_ne;  //old lpn != new lpn
+
+    int ws_user_page_write_between_trim;
+    int ws_gc_page_write_between_trim;
+    int ws_gc_old_lpn_count;
+
 #endif
     /* Average IO Time */
     double avg_write_delay;

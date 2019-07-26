@@ -390,14 +390,14 @@ int64_t _FTL_READ(struct ssdstate *ssd, int64_t sector_nb, unsigned int length)
         }
 
 		cur_need_to_emulate_tt = SSD_PAGE_READ(ssd, num_flash, num_blk, CALC_PAGE(ssd, ppn), n_io_info);
-#ifdef WS_COUNT
-	ssd->ws_temp = get_ts_in_ns();
-	if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
-	{
-		ws_print(ssd);
-		ssd->ws_time = ssd->ws_temp;
-	}
-#endif
+// #ifdef WS_COUNT
+// 	ssd->ws_temp = get_ts_in_ns();
+// 	if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
+// 	{
+// 		ws_print(ssd);
+// 		ssd->ws_time = ssd->ws_temp;
+// 	}
+// #endif
         if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
             max_need_to_emulate_tt = cur_need_to_emulate_tt;
         }
@@ -602,6 +602,19 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 		//f2fs_block_type = DATA_HOT_COLD_BLOCK;
 #endif	//EXT4
 #else	//MULTISTREAM	
+		f2fs_current_lpn = request1->lpns_info[write_page_nb].f2fs_current_lpn;
+		f2fs_old_lpn = request1->lpns_info[write_page_nb].f2fs_old_lpn;
+		
+		if(f2fs_old_lpn == -1);
+		else if(f2fs_old_lpn == f2fs_current_lpn)
+		{
+			ssd->ws_old_new_e++;
+		}
+		else
+		{
+			ssd->ws_old_new_ne++;
+		}
+
 		f2fs_block_type = DATA_BLOCK;
 #endif	//MULTISTREAM	 
 
@@ -653,14 +666,14 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 		else{
 			cur_need_to_emulate_tt = SSD_PAGE_WRITE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), n_io_info);
 		}
-#ifdef WS_COUNT
-	ssd->ws_temp = get_ts_in_ns();
-	if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
-	{
-		ws_print(ssd);
-		ssd->ws_time = ssd->ws_temp;
-	}
-#endif
+// #ifdef WS_COUNT
+// 	ssd->ws_temp = get_ts_in_ns();
+// 	if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
+// 	{
+// 		ws_print(ssd);
+// 		ssd->ws_time = ssd->ws_temp;
+// 	}
+// #endif
         if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
             max_need_to_emulate_tt = cur_need_to_emulate_tt;
         }
@@ -686,6 +699,14 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 			//printf("hao_debug:_FTL_WRITE yyyyyyy %d %d\n", f2fs_old_lpn, f2fs_type);
 			//TRIM_MAPPING_TABLE(ssd, f2fs_old_lpn);	//add by hao: Immediate invalidation
 			//printf("hao_debug:_FTL_WRITE yyyyyyy %d\n", f2fs_old_lpn);
+		}
+#else
+		if(f2fs_old_lpn != f2fs_current_lpn) {
+					//printf("f2fs_block_type = %d\n", f2fs_block_type);
+			int64_t *mapping_table = ssd->mapping_table;
+
+			/* Update Old Block State to PRE_FREE */
+			UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, old_ppn), CALC_BLOCK(ssd, old_ppn), CALC_PAGE(ssd, old_ppn), PRE_FREE);
 		}
 #endif
 

@@ -110,6 +110,7 @@ int64_t SSD_PAGE_WRITE(struct ssdstate *ssd, unsigned int flash_nb,
 {
 #ifdef WS_COUNT
 	ssd->ws_total_write_count++;
+	ssd->ws_user_page_write_between_trim++;
 #endif		
     struct ssdconf *sc = &(ssd->ssdparams);
     int CHANNEL_NB = sc->CHANNEL_NB;

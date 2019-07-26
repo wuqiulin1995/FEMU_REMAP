@@ -31,11 +31,12 @@
 
 #define WS_COUNT
 #ifdef WS_COUNT
-#define PRINT_INTERVAL 10	//输出的时间间隔（秒）
+#define OUTPUT_FILENAME ("/home/nvm/statistic.csv")
+//#define PRINT_INTERVAL 10	//输出的时间间隔（秒）
 //#define OUTPOU_FILE "~/4head_counter.dat"
 #endif
 
-#define EXT4
+//#define EXT4
 
 // parameters for EXT4
 #ifdef EXT4
@@ -63,7 +64,7 @@
 	#define GC_ON			/* Garbage Collection for PAGE MAP */
 	#define GC_TRIGGER_OVERALL
 	#define GC_VICTIM_OVERALL
-	#define MULTISTREAM
+	//#define MULTISTREAM
 	//#define WRITE_NOPARAL
 	//#define FTL_MAP_CACHE		/* FTL MAP Cache for PAGE MAP */
 #endif
@@ -209,6 +210,7 @@
 /* Page Type */
 #define VALID		50
 #define INVALID		51
+#define PRE_FREE	52
 
 /* Caller Type for Hybrid FTL */
 #if defined FAST_FTL || defined LAST_FTL

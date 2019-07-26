@@ -29,6 +29,7 @@ int GET_NEW_PAGE(struct ssdstate *ssd, int mode, int mapping_index, int64_t* ppn
 
 int UPDATE_OLD_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn);
 int UPDATE_NEW_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn, int64_t ppn, int f2fs_block_type);
+int UPDATE_NEW_PAGE_MAPPING2(struct ssdstate *ssd, int64_t lpn, int64_t ppn, int f2fs_block_type);
 
 void TRIM_MAPPING_TABLE(struct ssdstate *ssd, int64_t f2fs_old_lpn);
 
