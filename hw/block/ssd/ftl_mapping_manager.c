@@ -113,7 +113,7 @@ int UPDATE_OLD_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn)
     //printf("shuai_debug: old_ppn = %d\n", old_ppn);
 #endif
 
-	if(old_ppn == -1){
+	if(old_ppn == (int64_t)(-1)){
 #ifdef FTL_DEBUG
 		printf("[%s] New page \n", __FUNCTION__);
 #endif
@@ -149,7 +149,7 @@ int UPDATE_NEW_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn, int64_t ppn,	int 
 	return SUCCESS;
 }
 
-int UPDATE_NEW_PAGE_MAPPING2(struct ssdstate *ssd, int64_t lpn, int64_t ppn,	int f2fs_block_type)
+int UPDATE_NEW_PAGE_MAPPING2(struct ssdstate *ssd, int64_t lpn, int64_t ppn, int f2fs_block_type)
 {
     //printf("f2fs_block_type = %d\n", f2fs_block_type);
     int64_t *mapping_table = ssd->mapping_table;
@@ -200,6 +200,7 @@ unsigned int CALC_FLASH(struct ssdstate *ssd, int64_t ppn)
 	unsigned int flash_nb = (ppn/PAGE_NB)/BLOCK_NB;
 
 	if(flash_nb >= FLASH_NB){
+        printf("ppn = %ld\n", ppn);
 		printf("ERROR[%s] flash_nb %u\n", __FUNCTION__,flash_nb);
 	}
 	return flash_nb;
@@ -214,6 +215,7 @@ unsigned int CALC_BLOCK(struct ssdstate *ssd, int64_t ppn)
 	unsigned int block_nb = (ppn/PAGE_NB)%BLOCK_NB;
 
 	if(block_nb >= BLOCK_NB){
+        printf("ppn = %ld\n", ppn);
 		printf("ERROR[%s] block_nb %u\n",__FUNCTION__, block_nb);
 	}
 	return block_nb;
@@ -361,10 +363,23 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
 	request1->lpns_info[i].f2fs_temp = t10->f2fs_temp;
 	request1->lpns_info[i].f2fs_type = t10->f2fs_type;
 	request1->lpns_info[i].f2fs_old_lpn = t10->f2fs_old_lba;
+    if(request1->lpns_info[i].f2fs_old_lpn == 4294967295)
+        request1->lpns_info[i].f2fs_old_lpn = (int64_t)(-1);
+    if(request1->lpns_info[i].f2fs_old_lpn >= sc->PAGE_MAPPING_ENTRY_NB || request1->lpns_info[i].f2fs_old_lpn < MAIN_AREA)
+    {
+        request1->lpns_info[i].f2fs_type  = 2;
+        request1->lpns_info[i].f2fs_old_lpn = (int64_t)(-1);
+    }
+    // printf("1request1->lpns_info[i].f2fs_old_lpn = %d\n", request1->lpns_info[i].f2fs_old_lpn);
+    // printf("1request1->lpns_info[i].f2fs_old_lpn = %ld\n", request1->lpns_info[i].f2fs_old_lpn);
+    // printf("1request1->lpns_info[i].f2fs_old_lpn = %lu\n\n", request1->lpns_info[i].f2fs_old_lpn);
 
     if (t10->f2fs_type != 0 && t10->f2fs_type != 1 && t10->f2fs_type != 2) {
        request1->lpns_info[i].f2fs_type  = 2;              //hao: metadata type 
-       request1->lpns_info[i].f2fs_old_lpn = -1;
+       request1->lpns_info[i].f2fs_old_lpn = (int64_t)(-1);
+    //    printf("2request1->lpns_info[i].f2fs_old_lpn = %d\n", request1->lpns_info[i].f2fs_old_lpn);
+    //    printf("2request1->lpns_info[i].f2fs_old_lpn = %ld\n", request1->lpns_info[i].f2fs_old_lpn);
+    //    printf("2request1->lpns_info[i].f2fs_old_lpn = %lu\n\n", request1->lpns_info[i].f2fs_old_lpn);
     }
 
     //printf("hao_debug:bbbbbbbb %d %d\n",t10->f2fs_new_lba, t10->f2fs_old_lba);

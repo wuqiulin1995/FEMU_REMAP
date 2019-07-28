@@ -30,18 +30,27 @@ void GC_CHECK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_
 	
 #ifdef GC_TRIGGER_OVERALL
 	//printf("shuai_gc_check:%d %d\n", ssd->total_empty_block_nb, sc->GC_THRESHOLD_BLOCK_NB);
-	if(ssd->total_empty_block_nb < sc->GC_THRESHOLD_BLOCK_NB)
-	/*if(total_empty_block_nb <= FLASH_NB * PLANES_PER_FLASH)*/
-	{
+	// if(ssd->total_empty_block_nb < sc->GC_THRESHOLD_BLOCK_NB)
+	// /*if(total_empty_block_nb <= FLASH_NB * PLANES_PER_FLASH)*/
+	// {
 
-		for(i=0; i<GC_VICTIM_NB; i++){
-			//printf("hao_gc_check:66666666666666666666666\n");
-			ret = GARBAGE_COLLECTION(ssd, -1);
-			//printf("ret = %d\n", ret);
-			if(ret == FAIL){
-				break;
-			}
+	// 	for(i=0; i<GC_VICTIM_NB; i++){
+	// 		//printf("hao_gc_check:66666666666666666666666\n");
+	// 		ret = GARBAGE_COLLECTION(ssd, -1);
+	// 		//printf("ret = %d\n", ret);
+	// 		if(ret == FAIL){
+	// 			break;
+	// 		}
+	// 	}
+	// }
+	while(ssd->total_empty_block_nb < sc->GC_THRESHOLD_BLOCK_NB)
+	{
+		ret = GARBAGE_COLLECTION(ssd, -1);
+		if(ret == FAIL){
+			printf("ssd->fail_cnt = %d\n", ssd->fail_cnt);
+			break;
 		}
+		//printf("ret = %d\n", ret);
 	}
 #else
 	empty_block_root* curr_root_entry = (empty_block_root*)empty_block_list + mapping_index;
@@ -102,6 +111,7 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
     ssd->time_svb += get_ts_in_ns() - svb_start;
 
 	if(ret == FAIL){
+		printf("[%s] There is no available victim block\n", __FUNCTION__);
 #ifdef FTL_DEBUG
 		printf("[%s] There is no available victim block\n", __FUNCTION__);
 #endif

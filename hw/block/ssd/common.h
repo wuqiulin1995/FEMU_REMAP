@@ -28,6 +28,7 @@
 #define FILTER_SIZE_BYTES (1 << (FILTER_SIZE - 3))
 
 #define TYPE_BASE 101
+#define MAIN_AREA 55808
 
 #define WS_COUNT
 #ifdef WS_COUNT

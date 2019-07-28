@@ -38,7 +38,7 @@ void INIT_WS_COUNT(struct ssdstate *ssd)
 		printf("Error: Output file open error\n");
 		getchar();
 	}
-	fprintf(fout, "GC迁移的页总数量, GC迁移的old页, 用户写入数据量(页), GC写入数据量(页), old lpn==new lpn, old lpn!=new lpn,\n");
+	fprintf(fout, "GC迁移的页总数量, GC迁移的old页, 用户写入数据量(页), GC写入数据量(页), old_lpn==new_lpn, old_lpn!=new_lpn,\n");
 	fclose(fout);
     return;
 }
@@ -313,8 +313,8 @@ void INIT_SSD_CONFIG(struct ssdstate *ssd)
 
 	/* Garbage Collection */
 #if defined PAGE_MAP || defined BLOCK_MAP || defined DA_MAP
-	sc->GC_THRESHOLD = 0.75; // 0.7 for 70%, 0.9 for 90%
-	sc->GC_THRESHOLD_HARD = 0.78;
+	sc->GC_THRESHOLD = 0.85; // 0.7 for 70%, 0.9 for 90%
+	sc->GC_THRESHOLD_HARD = 0.9;
 	sc->GC_THRESHOLD_BLOCK_NB = (int)((1-sc->GC_THRESHOLD) * (double)sc->BLOCK_MAPPING_ENTRY_NB);
 	sc->GC_THRESHOLD_BLOCK_NB_HARD = (int)((1-sc->GC_THRESHOLD_HARD) * (double)sc->BLOCK_MAPPING_ENTRY_NB);
 	sc->GC_THRESHOLD_BLOCK_NB_EACH = (int)((1-sc->GC_THRESHOLD) * (double)sc->EACH_EMPTY_TABLE_ENTRY_NB);

@@ -169,7 +169,7 @@ struct lpn_info
 	int f2fs_type;
 	int f2fs_temp;
 	int64_t f2fs_current_lpn;
-	int f2fs_old_lpn;
+	int64_t f2fs_old_lpn;
 };
 
 

@@ -454,6 +454,9 @@ int64_t _FTL_READ(struct ssdstate *ssd, int64_t sector_nb, unsigned int length)
 
 int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 {
+// #ifdef GC_ON
+// 	GC_CHECK(ssd, 0, 0);
+// #endif
     struct ssdconf *sc = &(ssd->ssdparams);
     int64_t SECTOR_NB = sc->SECTOR_NB;
     int64_t SECTORS_PER_PAGE = sc->SECTORS_PER_PAGE;
@@ -546,7 +549,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 	int64_t  f2fs_temp;
 
 	int64_t  f2fs_current_lpn;
-	int  f2fs_old_lpn;
+	int64_t  f2fs_old_lpn;
 
 	int64_t  bloom_temp;
 	int      f2fs_block_type;
@@ -601,11 +604,12 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 		f2fs_block_type = NEW_BLOCK_TYPE(f2fs_type, f2fs_temp, bloom_temp);
 		//f2fs_block_type = DATA_HOT_COLD_BLOCK;
 #endif	//EXT4
-#else	//MULTISTREAM	
+#else	//MULTISTREAM
+		f2fs_type = request1->lpns_info[write_page_nb].f2fs_type;
 		f2fs_current_lpn = request1->lpns_info[write_page_nb].f2fs_current_lpn;
 		f2fs_old_lpn = request1->lpns_info[write_page_nb].f2fs_old_lpn;
-		
-		if(f2fs_old_lpn == -1);
+		//printf("ftl_write: current %ld, old %ld\n", f2fs_current_lpn, f2fs_old_lpn);
+		if(f2fs_old_lpn == -1 && f2fs_type == 2 && f2fs_current_lpn < MAIN_AREA);
 		else if(f2fs_old_lpn == f2fs_current_lpn)
 		{
 			ssd->ws_old_new_e++;
@@ -701,12 +705,14 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 			//printf("hao_debug:_FTL_WRITE yyyyyyy %d\n", f2fs_old_lpn);
 		}
 #else
-		if(f2fs_old_lpn != f2fs_current_lpn) {
-					//printf("f2fs_block_type = %d\n", f2fs_block_type);
-			int64_t *mapping_table = ssd->mapping_table;
-
+		if(f2fs_old_lpn != -1 && f2fs_type != 2 && f2fs_current_lpn >= MAIN_AREA && (f2fs_old_lpn != f2fs_current_lpn)) {
+			// printf("f2fs_type = %ld\n", f2fs_type);
+			// printf("f2fs_old_lpn = %ld, f2fs_current_lpn = %ld\n", f2fs_old_lpn, f2fs_current_lpn);
+			int64_t f2fs_old_ppn = GET_MAPPING_INFO(ssd, f2fs_old_lpn);
 			/* Update Old Block State to PRE_FREE */
-			UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, old_ppn), CALC_BLOCK(ssd, old_ppn), CALC_PAGE(ssd, old_ppn), PRE_FREE);
+			if(f2fs_old_ppn != (int64_t)(-1))
+				UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, f2fs_old_ppn), 
+					CALC_BLOCK(ssd, f2fs_old_ppn), CALC_PAGE(ssd, f2fs_old_ppn), PRE_FREE);
 		}
 #endif
 

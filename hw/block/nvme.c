@@ -1072,7 +1072,8 @@ if (n_pages > sc->max_page) {
 
 
     for (i = 0; i < n_pages; i++) {	
-		if (is_write) {
+		//printf("is_write=%d, meta=%d\n", is_write, meta);
+        if (is_write) {
 			if (meta) { //hao:Write the metadata corresponding to each page to the corresponding address
 				if (ftl_meta_write(ssd, ftl_meta_index(ssd, msl, i), request1, i)) {
 					printf("femu_oc_rw: write metadata failed\n");

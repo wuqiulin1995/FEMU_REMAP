@@ -467,6 +467,7 @@ void TERM_VICTIM_BLOCK_LIST(void)
 
 empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_index, int f2fs_block_type)
 {
+	// printf("GET_EMPTY_BLOCK: ssd->total_empty_block_nb = %ld\n******", ssd->total_empty_block_nb);
     struct ssdconf *sc = &(ssd->ssdparams);
     void *empty_block_list = ssd->empty_block_list;
     int64_t EMPTY_TABLE_ENTRY_NB = sc->EMPTY_TABLE_ENTRY_NB;
@@ -1000,9 +1001,10 @@ int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, un
 	}
 	else if(valid == PRE_FREE)
 	{
-		valid_array[phy_page_nb] = 'P';
+		if(valid_array[phy_page_nb] == 'V' || valid_array[phy_page_nb] == '0')
+			valid_array[phy_page_nb] = 'P';
+		return SUCCESS;
 	}
-	
 	else{
 		printf("ERROR[%s] Wrong valid value\n", __FUNCTION__);
 	}
