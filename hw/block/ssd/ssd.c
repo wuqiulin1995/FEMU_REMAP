@@ -451,7 +451,7 @@ int femu_discard_process(struct ssdstate *ssd, uint32_t length, int64_t sector_n
         //printf("FTL-WRITE: lpn -> ppn: %"PRId64" -> %"PRId64"\n", lpn, new_ppn);
 
 		UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
-        ssd->mapping_table[lpn] = -1;   //hao new add
+        // ssd->mapping_table[lpn] = -1;   //hao new add
         
 		lba += write_sects;
 		remain -= write_sects;

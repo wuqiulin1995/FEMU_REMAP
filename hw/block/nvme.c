@@ -1094,10 +1094,10 @@ if (n_pages > sc->max_page) {
 		}
     }
 
-    if (meta && (!is_write)) {
-        nvme_addr_write(n, meta, (void *)msl, n_pages * sc->sos);
-        //printf("hao:readaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
-    }  
+    // if (meta && (!is_write)) {
+    //     nvme_addr_write(n, meta, (void *)msl, n_pages * sc->sos);
+    //     //printf("hao:readaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
+    // }  
 
 #endif
     //printf("hao:nvme_rw step2\n");
