@@ -12,6 +12,7 @@
 #ifdef WS_COUNT
 void INIT_WS_COUNT(struct ssdstate *ssd)
 {
+	ssd->is_GC=0;
     ssd->ws_gc_count=0;
     ssd->ws_erase_count=0;
     
@@ -31,6 +32,8 @@ void INIT_WS_COUNT(struct ssdstate *ssd)
     ssd->ws_gc_page_write_between_trim=0;
 	ssd->ws_gc_old_lpn_count=0;
 
+    ssd->ws_newpage=0;
+
 	FILE *fout = NULL; 
 	fout = fopen(OUTPUT_FILENAME, "w");
 	if(fout == NULL)
@@ -38,7 +41,8 @@ void INIT_WS_COUNT(struct ssdstate *ssd)
 		printf("Error: Output file open error\n");
 		getchar();
 	}
-	fprintf(fout, "GC迁移的页总数量, GC迁移的old页, 用户写入数据量(页), GC写入数据量(页), old_lpn==new_lpn, old_lpn!=new_lpn,\n");
+	fprintf(fout, "is_gc, GC迁移的页总数量, GC擦除的块数, GC迁移的old页, GC写入数据量(页), 用户写入数据量(页),  write_new_page ,old_lpn==new_lpn, old_lpn!=new_lpn, valid_page, \\
+invalid_page, prefree_page,\n");
 	fclose(fout);
     return;
 }
@@ -60,11 +64,60 @@ void ws_print(struct ssdstate *ssd)
 		printf("Error: Output file open error\n");
 		getchar();
 	}
-	fprintf(fout, "%d, %d, %d, %d, %d, %d,\n", ssd->ws_gc_write_count, 
-	ssd->ws_gc_old_lpn_count, ssd->ws_user_page_write_between_trim, ssd->ws_gc_page_write_between_trim,
-	ssd->ws_old_new_e, ssd->ws_old_new_ne);
+	fprintf(fout, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d,\n", ssd->is_GC, ssd->ws_gc_write_count,
+	ssd->ws_erase_count, 
+	ssd->ws_gc_old_lpn_count, ssd->ws_gc_page_write_between_trim, ssd->ws_user_page_write_between_trim,
+	ssd->ws_newpage,
+	ssd->ws_old_new_e, ssd->ws_old_new_ne, 0, 0, 0);
 	fflush(fout);
 	//fprintf(fout, "GC迁移的页总数量, GC迁移的old页, 用户写入数据量(页), GC写入数据量(页), old lpn==new lpn, old lpn!=new lpn,\n");
+	fclose(fout);
+	return;
+}
+
+void ws_print_lba(struct ssdstate *ssd)
+{
+	FILE *fout = NULL; 
+	fout = fopen(OUTPUT_FILENAME, "a");
+	if(fout == NULL)
+	{
+		printf("Error: Output file open error\n");
+		getchar();
+	}
+	int ws_ppa_valid=0;
+    int ws_ppa_invaild=0;
+    int ws_ppa_pre_free=0;
+
+	struct ssdconf *sc = &(ssd->ssdparams);
+	int FLASH_NB = sc->FLASH_NB;
+    int BLOCK_NB = sc->BLOCK_NB;
+    int PAGE_NB = sc->PAGE_NB;
+
+	block_state_entry* b_s_entry;
+	char* valid_array;
+
+	int i, j, k;
+	for(i=0; i<FLASH_NB; i++)
+	{
+		for(j=0; j<BLOCK_NB; j++)
+		{
+			b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, i, j);
+			valid_array = b_s_entry->valid_array;
+			for(k=0; k<PAGE_NB; k++)
+			{
+				if(valid_array[k]=='V')
+					ws_ppa_valid++;
+				else if(valid_array[k]=='I')
+					ws_ppa_invaild++;
+				else if(valid_array[k]=='P')
+					ws_ppa_pre_free++;
+			}
+		}
+	}
+
+	fprintf(fout, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d,\n", ssd->is_GC, 0, 0, 0, 0, 0, 0, 0, 0,
+		ws_ppa_valid, ws_ppa_invaild, ws_ppa_pre_free);
+	fflush(fout);
 	fclose(fout);
 	return;
 }
@@ -313,8 +366,8 @@ void INIT_SSD_CONFIG(struct ssdstate *ssd)
 
 	/* Garbage Collection */
 #if defined PAGE_MAP || defined BLOCK_MAP || defined DA_MAP
-	sc->GC_THRESHOLD = 0.85; // 0.7 for 70%, 0.9 for 90%
-	sc->GC_THRESHOLD_HARD = 0.9;
+	sc->GC_THRESHOLD = 0.9; // 0.7 for 70%, 0.9 for 90%
+	sc->GC_THRESHOLD_HARD = 0.95;
 	sc->GC_THRESHOLD_BLOCK_NB = (int)((1-sc->GC_THRESHOLD) * (double)sc->BLOCK_MAPPING_ENTRY_NB);
 	sc->GC_THRESHOLD_BLOCK_NB_HARD = (int)((1-sc->GC_THRESHOLD_HARD) * (double)sc->BLOCK_MAPPING_ENTRY_NB);
 	sc->GC_THRESHOLD_BLOCK_NB_EACH = (int)((1-sc->GC_THRESHOLD) * (double)sc->EACH_EMPTY_TABLE_ENTRY_NB);

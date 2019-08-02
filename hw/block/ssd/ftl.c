@@ -609,14 +609,18 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 		f2fs_current_lpn = request1->lpns_info[write_page_nb].f2fs_current_lpn;
 		f2fs_old_lpn = request1->lpns_info[write_page_nb].f2fs_old_lpn;
 		//printf("ftl_write: current %ld, old %ld\n", f2fs_current_lpn, f2fs_old_lpn);
-		if(f2fs_old_lpn == -1 || f2fs_type == 2 || f2fs_current_lpn < MAIN_AREA);
+		if(f2fs_old_lpn == -1 || f2fs_type == 2 || f2fs_current_lpn < MAIN_AREA)
+		{
+			if(f2fs_old_lpn == -1)
+				ssd->ws_newpage++;
+		}
 		else if(f2fs_old_lpn == f2fs_current_lpn)
 		{
-			ssd->ws_old_new_e++;
+			ssd->ws_old_new_e++;	//IPU
 		}
 		else
 		{
-			ssd->ws_old_new_ne++;
+			ssd->ws_old_new_ne++;	//LFS
 		}
 
 		f2fs_block_type = DATA_BLOCK;
@@ -685,7 +689,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 		write_page_nb++;
 		//printf("hao_debug:_FTL_WRITE new_ppn %d\n", new_ppn);
         //printf("FTL-WRITE: lpn -> ppn: %"PRId64" -> %"PRId64"\n", lpn, new_ppn);
-
+		
 		UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
 		UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, f2fs_block_type);
 		//printf("hao_debug:_FTL_WRITE xxxxxxxxxxxxxx %d\n", write_page_nb);
