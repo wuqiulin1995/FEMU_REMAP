@@ -276,6 +276,11 @@ struct ssdstate {
     int ws_gc_page_write_between_trim;
     int ws_gc_old_lpn_count;
 
+    int ws_ppa_valid;
+	int ws_ppa_invalid; 
+	int ws_ppa_pre_free;
+    int ws_ppa_free;
+
     int ws_newpage;
 
 #endif
@@ -509,7 +514,6 @@ int64_t CALC_DA_BM_ENTRY_NB(struct ssdstate *ssd);
 //Add by shuai. Statistics.
 void INIT_WS_COUNT(struct ssdstate *ssd);
 void ws_print(struct ssdstate *ssd);
-void ws_print_lba(struct ssdstate *ssd);
 #endif //WS_COUNT
 
 #endif

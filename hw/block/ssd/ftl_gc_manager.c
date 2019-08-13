@@ -52,16 +52,16 @@ void GC_CHECK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_
 			if(ssd->gc_count % 10000 == 1)
 			{
 				ssd->is_GC=2;
-				ws_print_lba(ssd);
+				ws_print(ssd);
 			}
-			ssd->ws_newpage=0;
-			ssd->ws_old_new_e=0;   //old lpn == new lpn
-			ssd->ws_old_new_ne=0;  //old lpn != new lpn
-			ssd->ws_erase_count=0;
-			ssd->ws_user_page_write_between_trim=0;
-			ssd->ws_gc_page_write_between_trim=0;
-			ssd->ws_gc_old_lpn_count=0;
-			ssd->is_GC = 0;
+			// ssd->ws_newpage=0;
+			// ssd->ws_old_new_e=0;   //old lpn == new lpn
+			// ssd->ws_old_new_ne=0;  //old lpn != new lpn
+			// ssd->ws_erase_count=0;
+			// ssd->ws_user_page_write_between_trim=0;
+			// ssd->ws_gc_page_write_between_trim=0;
+			// ssd->ws_gc_old_lpn_count=0;
+			// ssd->is_GC = 0;
 		}
 		ret = GARBAGE_COLLECTION(ssd, -1);
 		if(ret == FAIL){
@@ -191,12 +191,13 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 			ssd->ws_gc_write_count++;
 			ssd->ws_user_page_write_between_trim--;
 			ssd->ws_gc_page_write_between_trim++;
-			// ssd->ws_temp = get_ts_in_ns();
-			// if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
-			// {
-			// 	ws_print(ssd);
-			// 	ssd->ws_time = ssd->ws_temp;
-			// }
+			ssd->ws_temp = get_ts_in_ns();
+			if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
+			{
+				ssd->is_GC = 3;
+				ws_print(ssd);
+				ssd->ws_time = ssd->ws_temp;
+			}
 
 #endif //WS_COUNT
 			//old_ppn =  victim_block_base_ppn  + i;
@@ -242,12 +243,13 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 			ssd->ws_user_page_write_between_trim--;
 			ssd->ws_gc_page_write_between_trim++;
 			ssd->ws_gc_old_lpn_count++;
-			// ssd->ws_temp = get_ts_in_ns();
-			// if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
-			// {
-			// 	ws_print(ssd);
-			// 	ssd->ws_time = ssd->ws_temp;
-			// }
+			ssd->ws_temp = get_ts_in_ns();
+			if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
+			{
+				ssd->is_GC = 3;
+				ws_print(ssd);
+				ssd->ws_time = ssd->ws_temp;
+			}
 
 #endif //WS_COUNT
 			//old_ppn =  victim_block_base_ppn  + i;
@@ -303,12 +305,13 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 	ssd->ws_gc_count++;
 	ssd->ws_erase_count++;
 
-	// ssd->ws_temp = get_ts_in_ns();
-	// if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
-	// {
-	// 	ws_print(ssd);
-	// 	ssd->ws_time = ssd->ws_temp;
-	// }
+	ssd->ws_temp = get_ts_in_ns();
+	if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
+	{
+		ssd->is_GC = 3;
+		ws_print(ssd);
+		ssd->ws_time = ssd->ws_temp;
+	}
 
 #endif
 

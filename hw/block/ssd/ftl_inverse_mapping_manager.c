@@ -989,20 +989,52 @@ int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, un
 
 	char* valid_array = b_s_entry->valid_array;
 
+	switch (valid_array[phy_page_nb])
+	{
+	case 'V':
+		ssd->ws_ppa_valid--;
+		break;
+	
+	case 'I':
+		ssd->ws_ppa_invalid--;
+		break;
+
+	case 'P':
+		ssd->ws_ppa_pre_free--;
+		break;
+
+	case '0':
+		ssd->ws_ppa_free--;
+		break;
+	
+	default:
+		break;
+	}
+
 	if(valid == VALID){
 		valid_array[phy_page_nb] = 'V';
+		ssd->ws_ppa_valid++;
 	}
 	else if(valid == INVALID){
 		//printf("shuai_debug: invalid %d %d\n", phy_flash_nb, phy_block_nb);
 		valid_array[phy_page_nb] = 'I';
+		ssd->ws_ppa_invalid++;
 	}
 	else if(valid == 0){
 		valid_array[phy_page_nb] = '0';
+		ssd->ws_ppa_free++;
 	}
 	else if(valid == PRE_FREE)
 	{
-		if(valid_array[phy_page_nb] == 'V' || valid_array[phy_page_nb] == '0')
+		if(valid_array[phy_page_nb] == 'V' || valid_array[phy_page_nb] == '0' || valid_array[phy_page_nb] == 'P')
+		{
 			valid_array[phy_page_nb] = 'P';
+			ssd->ws_ppa_pre_free++;
+		}
+		else if(valid_array[phy_page_nb] == 'I')
+		{
+			ssd->ws_ppa_invalid++;
+		}
 		return SUCCESS;
 	}
 	else{
