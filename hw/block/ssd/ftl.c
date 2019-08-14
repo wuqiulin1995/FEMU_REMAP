@@ -610,19 +610,6 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 		f2fs_current_lpn = request1->lpns_info[write_page_nb].f2fs_current_lpn;
 		f2fs_old_lpn = request1->lpns_info[write_page_nb].f2fs_old_lpn;
 		//printf("ftl_write: current %ld, old %ld\n", f2fs_current_lpn, f2fs_old_lpn);
-		if(f2fs_old_lpn == -1 || f2fs_type == 2 || f2fs_current_lpn < MAIN_AREA)
-		{
-			if(f2fs_old_lpn == -1)
-				ssd->ws_newpage++;
-		}
-		else if(f2fs_old_lpn == f2fs_current_lpn)
-		{
-			ssd->ws_old_new_e++;	//IPU
-		}
-		else
-		{
-			ssd->ws_old_new_ne++;	//LFS
-		}
 
 		f2fs_block_type = DATA_BLOCK;
 #endif	//MULTISTREAM	 
@@ -637,10 +624,26 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 #else
 		ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, f2fs_block_type);
 #endif
+
 		if(ret == FAIL){
 			printf("ERROR[%s] Get new page fail \n", __FUNCTION__);
 			return FAIL;
 		}
+
+		if(f2fs_old_lpn == -1 || f2fs_type == 2 || f2fs_current_lpn < MAIN_AREA)
+		{
+			if(f2fs_old_lpn == -1)
+				ssd->ws_newpage++;
+		}
+		else if(f2fs_old_lpn == f2fs_current_lpn)
+		{
+			ssd->ws_old_new_e++;	//IPU
+		}
+		else
+		{
+			ssd->ws_old_new_ne++;	//LFS
+		}
+
 		//printf("hao_debug:_FTL_WRITEbbbbbbbbbbbbbbbbbbbbbb %d\n", bloom_temp);
 		lpn = lba / (int64_t)SECTORS_PER_PAGE;
 		old_ppn = GET_MAPPING_INFO(ssd, lpn);
@@ -705,10 +708,19 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 #endif
 
 #ifdef MULTISTREAM
-        if(f2fs_old_lpn != -1 && f2fs_type != 2) {
-			//printf("hao_debug:_FTL_WRITE yyyyyyy %d %d\n", f2fs_old_lpn, f2fs_type);
-			//TRIM_MAPPING_TABLE(ssd, f2fs_old_lpn);	//add by hao: Immediate invalidation
-			//printf("hao_debug:_FTL_WRITE yyyyyyy %d\n", f2fs_old_lpn);
+        // if(f2fs_old_lpn != -1 && f2fs_type != 2) {
+		// 	//printf("hao_debug:_FTL_WRITE yyyyyyy %d %d\n", f2fs_old_lpn, f2fs_type);
+		// 	//TRIM_MAPPING_TABLE(ssd, f2fs_old_lpn);	//add by hao: Immediate invalidation
+		// 	//printf("hao_debug:_FTL_WRITE yyyyyyy %d\n", f2fs_old_lpn);
+		// }
+		if(f2fs_old_lpn != -1 && f2fs_type != 2 && f2fs_current_lpn >= MAIN_AREA && (f2fs_old_lpn != f2fs_current_lpn)) {
+			// printf("f2fs_type = %ld\n", f2fs_type);
+			// printf("f2fs_old_lpn = %ld, f2fs_current_lpn = %ld\n", f2fs_old_lpn, f2fs_current_lpn);
+			int64_t f2fs_old_ppn = GET_MAPPING_INFO(ssd, f2fs_old_lpn);
+			/* Update Old Block State to PRE_FREE */
+			if(f2fs_old_ppn != (int64_t)(-1))
+				UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, f2fs_old_ppn), 
+					CALC_BLOCK(ssd, f2fs_old_ppn), CALC_PAGE(ssd, f2fs_old_ppn), PRE_FREE);
 		}
 #else
 		if(f2fs_old_lpn != -1 && f2fs_type != 2 && f2fs_current_lpn >= MAIN_AREA && (f2fs_old_lpn != f2fs_current_lpn)) {

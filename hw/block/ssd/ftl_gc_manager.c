@@ -43,7 +43,7 @@ void GC_CHECK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_
 	// 		}
 	// 	}
 	// }
-	while(ssd->total_empty_block_nb < sc->GC_THRESHOLD_BLOCK_NB)
+	while(ssd->total_empty_block_nb < sc->GC_THRESHOLD_BLOCK_NB || ssd->ws_ppa_free < (sc->GC_THRESHOLD_BLOCK_NB*sc->PAGE_NB))
 	{
 		if(ssd->gc_count % 100 == 1)
 		{
