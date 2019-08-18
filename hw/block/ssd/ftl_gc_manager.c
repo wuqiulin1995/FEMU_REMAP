@@ -45,6 +45,7 @@ void GC_CHECK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_
 	// }
 	while(ssd->total_empty_block_nb < sc->GC_THRESHOLD_BLOCK_NB || ssd->ws_ppa_free < (sc->GC_THRESHOLD_BLOCK_NB*sc->PAGE_NB))
 	{
+		// printf("GC_CHECK\n");
 		if(ssd->gc_count % 100 == 1)
 		{
 			ssd->is_GC=1;
@@ -164,7 +165,11 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 	for(i=0;i<PAGE_NB;i++){
 		if(valid_array[i]=='V'){
 #ifdef GC_VICTIM_OVERALL
+#ifdef MULTISTREAM
 			ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, f2fs_block_type);
+#else
+			ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, DATA_BLOCK);		
+#endif
 			//printf("hao2222222222222222222222222222222222222\n");
             //new_ppn = new_ppn_base;
             //new_ppn_base++;
@@ -209,13 +214,17 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 #else
 			lpn = GET_INVERSE_MAPPING_INFO(ssd, old_ppn);
 #endif
-			UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, f2fs_block_type);
+			UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, DATA_BLOCK);
 
 			copy_page_nb++;
 		}
 		else if(valid_array[i] == 'P'){
 #ifdef GC_VICTIM_OVERALL
+#ifdef MULTISTREAM
 			ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, f2fs_block_type);
+#else
+			ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, PRE_FREE_BLOCK);
+#endif
 			//printf("hao2222222222222222222222222222222222222\n");
             //new_ppn = new_ppn_base;
             //new_ppn_base++;
@@ -261,17 +270,25 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 #else
 			lpn = GET_INVERSE_MAPPING_INFO(ssd, old_ppn);
 #endif
-			UPDATE_NEW_PAGE_MAPPING2(ssd, lpn, new_ppn, f2fs_block_type);
+			UPDATE_NEW_PAGE_MAPPING2(ssd, lpn, new_ppn, PRE_FREE_BLOCK);
 
 			copy_page_nb++;
 		}
 	}
     ssd->time_cp += get_ts_in_ns() - cp_start;
 
+#ifdef MULTISTREAM
 	if(copy_page_nb != b_s_entry->valid_page_nb){
 		printf("ERROR[%s] The number of valid page is not correct\n", __FUNCTION__);
 		return FAIL;
 	}
+#else
+	if(copy_page_nb != b_s_entry->valid_page_nb + b_s_entry->prefree_page_nb){
+		// printf("******%d %d %d\n", copy_page_nb, b_s_entry->valid_page_nb, b_s_entry->prefree_page_nb);
+		printf("ERROR[%s] The number of valid page is not correct\n", __FUNCTION__);
+		return FAIL;
+	}
+#endif
 
 #ifdef FTL_DEBUG
 	printf("[%s] [f: %d, b: %d] Copy Page : %d, total victim : %ld, total empty : %ld \n",__FUNCTION__, victim_phy_flash_nb, victim_phy_block_nb,  copy_page_nb, total_victim_block_nb, total_empty_block_nb);
@@ -393,6 +410,8 @@ int SELECT_VICTIM_BLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_flash_
 
 	block_state_entry* b_s_entry;
 	int curr_valid_page_nb;
+	int curr_prefree_page_nb;
+	double weight;
 
 	if(ssd->total_victim_block_nb == 0){
 		printf("ERROR[%s] There is no victim block\n", __FUNCTION__);
@@ -401,6 +420,7 @@ int SELECT_VICTIM_BLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_flash_
 
 	/* if GC_TRIGGER_OVERALL is defined, then */
 #ifdef GC_TRIGGER_OVERALL
+#ifndef GC_ALPHA
 	curr_v_b_root = (victim_block_root*)victim_block_list;
 
 	for(i=0;i<VICTIM_TABLE_ENTRY_NB;i++){
@@ -413,6 +433,7 @@ int SELECT_VICTIM_BLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_flash_
 				victim_block = curr_v_b_root->head;
 				b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, victim_block->phy_flash_nb, victim_block->phy_block_nb);
 				curr_valid_page_nb = b_s_entry->valid_page_nb;
+				curr_prefree_page_nb = b_s_entry->prefree_page_nb;
 			}
 		}
 		else{
@@ -431,6 +452,43 @@ int SELECT_VICTIM_BLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_flash_
 
 		curr_v_b_root += 1;
 	}
+#else
+	curr_v_b_root = (victim_block_root*)victim_block_list;
+
+	for(i=0;i<VICTIM_TABLE_ENTRY_NB;i++){
+
+		if(curr_v_b_root->victim_block_nb != 0){
+
+			entry_nb = curr_v_b_root->victim_block_nb;
+			curr_v_b_entry = curr_v_b_root->head;
+			if(victim_block == NULL){
+				victim_block = curr_v_b_root->head;
+				b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, victim_block->phy_flash_nb, victim_block->phy_block_nb);
+				curr_valid_page_nb = b_s_entry->valid_page_nb;
+				curr_prefree_page_nb = b_s_entry->prefree_page_nb;
+				weight = b_s_entry->valid_page_nb + GC_ALPHA * b_s_entry->prefree_page_nb;
+				// printf("weight: b_s_entry->valid_page_nb=%d, b_s_entry->prefree_page_nb=%d",b_s_entry->valid_page_nb, b_s_entry->prefree_page_nb);
+			}
+		}
+		else{
+			entry_nb = 0;
+		}
+
+		for(j=0;j<entry_nb;j++){
+			b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, curr_v_b_entry->phy_flash_nb, curr_v_b_entry->phy_block_nb);
+	
+			if(weight > b_s_entry->valid_page_nb + GC_ALPHA * b_s_entry->prefree_page_nb){
+				victim_block = curr_v_b_entry;
+				curr_valid_page_nb = b_s_entry->valid_page_nb;
+				curr_prefree_page_nb = b_s_entry->prefree_page_nb;
+				weight = b_s_entry->valid_page_nb + GC_ALPHA * b_s_entry->prefree_page_nb;
+			}
+			curr_v_b_entry = curr_v_b_entry->next;
+		}
+		// printf("weight = %lf\n");
+		curr_v_b_root += 1;
+	}
+#endif
 #else
 	/* if GC_TREGGER_OVERALL is not defined, then */
 	curr_v_b_root = (victim_block_root*)victim_block_list + chip;
@@ -459,12 +517,22 @@ int SELECT_VICTIM_BLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_flash_
 		curr_v_b_entry = curr_v_b_entry->next;
 	}
 #endif
+#ifdef MULTISTREAM
 	if(curr_valid_page_nb == PAGE_NB){
 		ssd->fail_cnt++;
 		//printf(" Fail Count : %d\n", ssd->fail_cnt);
 		return FAIL;
 	}
+#else
+	if(curr_valid_page_nb + curr_prefree_page_nb == PAGE_NB)
+	{
+		printf("curr_valid_page_nb=%d, curr_prefree_page_nb=%d\n",curr_valid_page_nb, curr_prefree_page_nb);
+		ssd->fail_cnt++;
+		printf(" Fail Count : %d\n", ssd->fail_cnt);
+		return FAIL;
+	}
 
+#endif
 	*phy_flash_nb = victim_block->phy_flash_nb;
 	*phy_block_nb = victim_block->phy_block_nb;
 	EJECT_VICTIM_BLOCK(ssd, victim_block);

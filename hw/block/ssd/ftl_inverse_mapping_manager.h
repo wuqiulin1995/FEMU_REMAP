@@ -26,6 +26,7 @@ struct ssdstate;
 typedef struct block_state_entry
 {
 	int valid_page_nb;
+	int prefree_page_nb;
 	int type;
 	unsigned int erase_count;
 	char* valid_array;
@@ -34,15 +35,17 @@ typedef struct block_state_entry
 
 typedef struct empty_block_root
 {
-#ifdef MULTISTREAM
 	struct empty_block_entry* empty_head;
+#ifdef MULTISTREAM
 #ifdef EXT4
 	struct empty_block_entry* head[TYPE_NUM];
 #else //EXT4
 	struct empty_block_entry* head[13];
 #endif //EXT4
 #else //MULTISTREAM
-	struct empty_block_entry* head;
+
+	struct empty_block_entry* head[2];
+	
 #endif //MULTISTREAM
 	struct empty_block_entry* tail;
 	unsigned int empty_block_nb;

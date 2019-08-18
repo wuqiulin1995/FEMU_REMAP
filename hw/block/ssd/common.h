@@ -29,6 +29,7 @@
 
 #define TYPE_BASE 101
 #define MAIN_AREA 55808
+#define GC_ALPHA 1	//GC victim block: valid page number + prefree page number * α
 
 #define WS_COUNT
 #ifdef WS_COUNT
@@ -65,7 +66,7 @@
 	#define GC_ON			/* Garbage Collection for PAGE MAP */
 	#define GC_TRIGGER_OVERALL
 	#define GC_VICTIM_OVERALL
-	#define MULTISTREAM
+	//#define MULTISTREAM
 	//#define WRITE_NOPARAL
 	//#define FTL_MAP_CACHE		/* FTL MAP Cache for PAGE MAP */
 #endif
@@ -179,6 +180,7 @@
 /*New Block Type */
 
 #define DATA_BLOCK                39  //ready to change
+#define PRE_FREE_BLOCK			  40
 
 #define EMPTY_BLOCK               100
 
