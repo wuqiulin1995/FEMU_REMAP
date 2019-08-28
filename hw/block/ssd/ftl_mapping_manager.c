@@ -72,6 +72,12 @@ int64_t GET_MAPPING_INFO(struct ssdstate *ssd, int64_t lpn)
 
 int GET_NEW_PAGE(struct ssdstate *ssd, int mode, int mapping_index, int64_t* ppn, int f2fs_block_type)
 {
+    // FILE *fp = fopen("/home/nvm/temp.txt","a");
+    // if(fp == NULL)
+    // {
+    //     printf("FILE open error!\n");
+    //     return NULL;
+    // }
     struct ssdconf *sc = &(ssd->ssdparams);
     int BLOCK_NB = sc->BLOCK_NB;
     int PAGE_NB = sc->PAGE_NB;
@@ -80,6 +86,41 @@ int GET_NEW_PAGE(struct ssdstate *ssd, int mode, int mapping_index, int64_t* ppn
 	empty_block_entry* curr_empty_block;
 
 	curr_empty_block = GET_EMPTY_BLOCK(ssd, mode, mapping_index, f2fs_block_type);
+
+#ifdef SB_DEBUG
+    int index = f2fs_block_type - DATA_BLOCK;
+    int off = ssd->empty_block_table_index[index];
+    int plane_nb = curr_empty_block->phy_flash_nb * sc->PLANES_PER_FLASH + curr_empty_block->phy_block_nb % sc->PLANES_PER_FLASH;
+    int block_nb = curr_empty_block->phy_block_nb / sc->PLANES_PER_FLASH;
+    // printf("index = %d, off = %d, plane_nb = %d, block_nb = %d, page_nb = %d\n", index, off, plane_nb, block_nb, curr_empty_block->curr_phy_page_nb);
+    if(plane_nb==0)
+    {
+        if(ssd->sb_deb[index].plane_nb != sc->PLANES_PER_FLASH * sc->FLASH_NB - 1)
+        {
+            printf("1ERROR[%s]: last_plane = %d, new_plane = %d\n", __FUNCTION__, ssd->sb_deb[index].plane_nb, 0);
+            return FAIL;
+        }
+        ssd->sb_deb[index].block_nb = block_nb;
+        ssd->sb_deb[index].plane_nb = 0;
+    }
+    else
+    {
+        if(ssd->sb_deb[index].block_nb != block_nb)
+        {
+            printf("ERROR[%s]: ssd->sb_deb[index].block_nb = %d, block_nb = %d\n", __FUNCTION__, ssd->sb_deb[index].block_nb, block_nb);
+            return FAIL;
+        }
+        if(ssd->sb_deb[index].plane_nb != plane_nb-1)
+        {
+            printf("2ERROR[%s]: last_plane = %d, new_plane = %d\n", __FUNCTION__, ssd->sb_deb[index].plane_nb, plane_nb);
+            return FAIL;
+        }
+        ssd->sb_deb[index].plane_nb = plane_nb;
+        // ssd->sb_deb[index].block_nb = block_nb;
+    }
+    // fclose(fp);
+    // printf("curr_empty_block->phy_block_nb=%d, sc->PLANES_PER_FLASH=%d\n",curr_empty_block->phy_block_nb, sc->PLANES_PER_FLASH);
+#endif
 
 	/* If the flash memory has no empty block,
                 Get empty block from the other flash memories */
@@ -104,8 +145,8 @@ int GET_NEW_PAGE(struct ssdstate *ssd, int mode, int mapping_index, int64_t* ppn
 
 int UPDATE_OLD_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn)
 {
-	int64_t old_ppn;
 
+	int64_t old_ppn;
 #ifdef FTL_MAP_CACHE
 	old_ppn = CACHE_GET_PPN(lpn);
 #else

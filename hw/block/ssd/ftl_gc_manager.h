@@ -19,4 +19,7 @@ void GC_CHECK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_
 int GARBAGE_COLLECTION(struct ssdstate *ssd, int chip);
 int SELECT_VICTIM_BLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_flash_nb, unsigned int* phy_block_nb);
 
+int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip);
+int SELECT_VICTIM_SUPERBLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_block_nb);
+
 #endif

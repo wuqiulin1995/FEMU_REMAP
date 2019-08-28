@@ -38,6 +38,19 @@
 //#define OUTPOU_FILE "~/4head_counter.dat"
 #endif
 
+#define SUPERBLOCK
+#define SB_DEBUG
+#ifdef SB_DEBUG	
+
+typedef struct SUPERBLOCK_DEBUG
+{
+	int plane_nb;
+	int block_nb;
+}sb_debug;
+
+
+#endif
+
 //#define EXT4
 
 // parameters for EXT4

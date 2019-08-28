@@ -250,7 +250,16 @@ struct ssdstate {
 
     int64_t total_empty_block_nb;
     int64_t total_victim_block_nb;
+#ifdef SUPERBLOCK
+    unsigned int empty_block_table_index[2];
+
+#ifdef SB_DEBUG
+    sb_debug sb_deb[2];
+#endif
+
+#else
     unsigned int empty_block_table_index;
+#endif
 
 #ifdef WS_COUNT
     /* Statistic by WangShuai*/
