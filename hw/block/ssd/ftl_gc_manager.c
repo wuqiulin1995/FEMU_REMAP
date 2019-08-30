@@ -568,7 +568,7 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 
 	ret = SELECT_VICTIM_SUPERBLOCK(ssd, chip, &victim_phy_block_nb);
 
-	    ssd->time_svb += get_ts_in_ns() - svb_start;
+	ssd->time_svb += get_ts_in_ns() - svb_start;
 
 	if(ret == FAIL)
 	{
@@ -671,6 +671,7 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 			ssd->ws_gc_write_count++;
 			ssd->ws_user_page_write_between_trim--;
 			ssd->ws_gc_page_write_between_trim++;
+			ssd->ws_gc_old_lpn_count++;
 			ssd->ws_temp = get_ts_in_ns();
 			if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
 			{
@@ -679,7 +680,7 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 				ssd->ws_time = ssd->ws_temp;
 			}
 
-#endif //WS_COUNT	
+#endif //WS_COUNT
 				//old_ppn =  victim_block_base_ppn  + i;
            		old_ppn = victim_phy_flash_nb*sc->PAGES_PER_FLASH + victim_phy_block_nb*sc->PAGE_NB + i;
 
@@ -722,6 +723,19 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
     ssd->time_up += get_ts_in_ns() - up_start;
 
 	ssd->gc_count++;
+#ifdef WS_COUNT
+	ssd->ws_gc_count++;
+	ssd->ws_erase_count += FLASH_NB * PLANES_PER_FLASH;
+
+	ssd->ws_temp = get_ts_in_ns();
+	if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
+	{
+		ssd->is_GC = 3;
+		ws_print(ssd);
+		ssd->ws_time = ssd->ws_temp;
+	}
+
+#endif
 
     /* Coperd: keep trace of #gc of last time */
     ssd->mygc_cnt += 1; 
