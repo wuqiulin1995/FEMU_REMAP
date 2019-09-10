@@ -89,34 +89,34 @@ int GET_NEW_PAGE(struct ssdstate *ssd, int mode, int mapping_index, int64_t* ppn
 
 #ifdef SB_DEBUG
     int index = f2fs_block_type - DATA_BLOCK;
-    int off = ssd->empty_block_table_index[index];
+    int off = ssd->empty_block_table_index;
     int plane_nb = curr_empty_block->phy_flash_nb * sc->PLANES_PER_FLASH + curr_empty_block->phy_block_nb % sc->PLANES_PER_FLASH;
     int block_nb = curr_empty_block->phy_block_nb / sc->PLANES_PER_FLASH;
     // printf("index = %d, off = %d, plane_nb = %d, block_nb = %d, page_nb = %d\n", index, off, plane_nb, block_nb, curr_empty_block->curr_phy_page_nb);
     if(plane_nb==0)
     {
-        if(ssd->sb_deb[index].plane_nb != sc->PLANES_PER_FLASH * sc->FLASH_NB - 1)
+        if(ssd->sb_deb.plane_nb != sc->PLANES_PER_FLASH * sc->FLASH_NB - 1)
         {
-            printf("1ERROR[%s]: last_plane = %d, new_plane = %d\n", __FUNCTION__, ssd->sb_deb[index].plane_nb, 0);
+            printf("1ERROR[%s]: last_plane = %d, new_plane = %d\n", __FUNCTION__, ssd->sb_deb.plane_nb, 0);
             return FAIL;
         }
-        ssd->sb_deb[index].block_nb = block_nb;
-        ssd->sb_deb[index].plane_nb = 0;
+        ssd->sb_deb.block_nb = block_nb;
+        ssd->sb_deb.plane_nb = 0;
     }
     else
     {
-        if(ssd->sb_deb[index].block_nb != block_nb)
+        if(ssd->sb_deb.block_nb != block_nb)
         {
-            printf("ERROR[%s]: ssd->sb_deb[index].block_nb = %d, block_nb = %d\n", __FUNCTION__, ssd->sb_deb[index].block_nb, block_nb);
+            printf("ERROR[%s]: ssd->sb_deb.block_nb = %d, block_nb = %d\n", __FUNCTION__, ssd->sb_deb.block_nb, block_nb);
             return FAIL;
         }
-        if(ssd->sb_deb[index].plane_nb != plane_nb-1)
+        if(ssd->sb_deb.plane_nb != plane_nb-1)
         {
-            printf("2ERROR[%s]: last_plane = %d, new_plane = %d\n", __FUNCTION__, ssd->sb_deb[index].plane_nb, plane_nb);
+            printf("2ERROR[%s]: last_plane = %d, new_plane = %d\n", __FUNCTION__, ssd->sb_deb.plane_nb, plane_nb);
             return FAIL;
         }
-        ssd->sb_deb[index].plane_nb = plane_nb;
-        // ssd->sb_deb[index].block_nb = block_nb;
+        ssd->sb_deb.plane_nb = plane_nb;
+        // ssd->sb_deb.block_nb = block_nb;
     }
     // fclose(fp);
     // printf("curr_empty_block->phy_block_nb=%d, sc->PLANES_PER_FLASH=%d\n",curr_empty_block->phy_block_nb, sc->PLANES_PER_FLASH);

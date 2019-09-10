@@ -729,8 +729,9 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 			int64_t f2fs_old_ppn = GET_MAPPING_INFO(ssd, f2fs_old_lpn);
 			/* Update Old Block State to PRE_FREE */
 			if(f2fs_old_ppn != (int64_t)(-1))
-				UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, f2fs_old_ppn), 
-					CALC_BLOCK(ssd, f2fs_old_ppn), CALC_PAGE(ssd, f2fs_old_ppn), PRE_FREE);
+				UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, f2fs_old_ppn),CALC_BLOCK(ssd, f2fs_old_ppn), CALC_PAGE(ssd, f2fs_old_ppn), VALID);
+				// UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, f2fs_old_ppn), 
+				// 	CALC_BLOCK(ssd, f2fs_old_ppn), CALC_PAGE(ssd, f2fs_old_ppn), PRE_FREE);
 		}
 #endif
 

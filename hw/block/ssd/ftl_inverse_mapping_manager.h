@@ -44,7 +44,7 @@ typedef struct empty_block_root
 #endif //EXT4
 #else //MULTISTREAM
 
-	struct empty_block_entry* head[2];
+	struct empty_block_entry* head;
 	
 #endif //MULTISTREAM
 	struct empty_block_entry* tail;

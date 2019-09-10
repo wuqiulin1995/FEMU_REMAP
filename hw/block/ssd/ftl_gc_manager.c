@@ -144,7 +144,7 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
     int64_t victim_block_base_ppn = victim_phy_flash_nb*PAGES_PER_FLASH + victim_phy_block_nb*PAGE_NB;
 
 	for(i=0;i<PAGE_NB;i++){
-		if(valid_array[i]=='V'){
+		if(valid_array[i]=='V' || valid_array[i] == 'P'){
 #ifdef GC_VICTIM_OVERALL
 #ifdef MULTISTREAM
 			ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, f2fs_block_type);
@@ -196,62 +196,6 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 			lpn = GET_INVERSE_MAPPING_INFO(ssd, old_ppn);
 #endif
 			UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, DATA_BLOCK);
-
-			copy_page_nb++;
-		}
-		else if(valid_array[i] == 'P'){
-#ifdef GC_VICTIM_OVERALL
-#ifdef MULTISTREAM
-			ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, f2fs_block_type);
-#else
-			ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, PRE_FREE_BLOCK);
-#endif
-			//printf("hao2222222222222222222222222222222222222\n");
-            //new_ppn = new_ppn_base;
-            //new_ppn_base++;
-#else
-			ret = GET_NEW_PAGE(ssd, VICTIM_INCHIP, mapping_index, &new_ppn, f2fs_block_type);
-            //new_ppn = new_ppn_base;
-            //new_ppn_base++;
-#endif
-			if(ret == FAIL){
-				printf("ERROR[%s] Get new page fail\n", __FUNCTION__);
-				return FAIL;
-			}
-
-		
-			/* Read a Valid Page from the Victim NAND Block */
-			//n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_READ, -1, ssd->io_request_seq_nb);
-			SSD_PAGE_READ(ssd, victim_phy_flash_nb, victim_phy_block_nb, i, n_io_info);
-
-			/* Write the Valid Page*/
-			//n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_WRITE, -1, ssd->io_request_seq_nb);
-			SSD_PAGE_WRITE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), n_io_info);
-#ifdef WS_COUNT
-			ssd->ws_gc_read_count++;
-			ssd->ws_gc_write_count++;
-			ssd->ws_user_page_write_between_trim--;
-			ssd->ws_gc_page_write_between_trim++;
-			ssd->ws_gc_old_lpn_count++;
-			ssd->ws_temp = get_ts_in_ns();
-			if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
-			{
-				ssd->is_GC = 3;
-				ws_print(ssd);
-				ssd->ws_time = ssd->ws_temp;
-			}
-
-#endif //WS_COUNT
-			//old_ppn =  victim_block_base_ppn  + i;
-            old_ppn = victim_phy_flash_nb*sc->PAGES_PER_FLASH + victim_phy_block_nb*sc->PAGE_NB + i;
-
-//			lpn = inverse_page_mapping_table[old_ppn];
-#ifdef FTL_MAP_CACHE
-			lpn = CACHE_GET_LPN(ssd, old_ppn);
-#else
-			lpn = GET_INVERSE_MAPPING_INFO(ssd, old_ppn);
-#endif
-			UPDATE_NEW_PAGE_MAPPING2(ssd, lpn, new_ppn, PRE_FREE_BLOCK);
 
 			copy_page_nb++;
 		}

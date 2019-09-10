@@ -176,12 +176,10 @@ void INIT_EMPTY_BLOCK_LIST(struct ssdstate *ssd)
 		// 	}
 		// }
 #ifdef SUPERBLOCK
-	ssd->empty_block_table_index[0] = 0;
-	ssd->empty_block_table_index[1] = 0;
+	ssd->empty_block_table_index = 0;
 #ifdef SB_DEBUG
-	memset(ssd->sb_deb, 0x00, 2*sizeof(sb_debug));
-	ssd->sb_deb[0].plane_nb = sc->PLANES_PER_FLASH * sc->FLASH_NB - 1;
-	ssd->sb_deb[1].plane_nb = sc->PLANES_PER_FLASH * sc->FLASH_NB - 1;
+	memset(&ssd->sb_deb, 0x00, sizeof(sb_debug));
+	ssd->sb_deb.plane_nb = sc->PLANES_PER_FLASH * sc->FLASH_NB - 1;
 #endif
 #else
 		ssd->empty_block_table_index = 0;
@@ -231,8 +229,7 @@ void INIT_EMPTY_BLOCK_LIST(struct ssdstate *ssd)
 						//curr_root->tail->pre = empty_curr_entry;
 						curr_root->tail->next = NULL;
 #else
-						curr_root->head[0] = NULL;
-						curr_root->head[1] = NULL;
+						curr_root->head = NULL;
 						curr_root->tail = curr_entry;
 #endif
 						curr_root->tail->phy_flash_nb = j;
@@ -264,12 +261,10 @@ void INIT_EMPTY_BLOCK_LIST(struct ssdstate *ssd)
 		//i downloaded from github
 		ssd->total_empty_block_nb = (int64_t)BLOCK_MAPPING_ENTRY_NB;
 #ifdef SUPERBLOCK
-		ssd->empty_block_table_index[0] = 0;
-		ssd->empty_block_table_index[1] = 0;
+		ssd->empty_block_table_index = 0;
 #ifdef SB_DEBUG
-		memset(ssd->sb_deb, 0x00, 2*sizeof(sb_debug));
-		ssd->sb_deb[0].plane_nb = sc->PLANES_PER_FLASH * sc->FLASH_NB - 1;
-		ssd->sb_deb[1].plane_nb = sc->PLANES_PER_FLASH * sc->FLASH_NB - 1;
+		memset(&ssd->sb_deb, 0x00, 1*sizeof(sb_debug));
+		ssd->sb_deb.plane_nb = sc->PLANES_PER_FLASH * sc->FLASH_NB - 1;
 #endif
 #else
 		ssd->empty_block_table_index = 0;
@@ -593,20 +588,20 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
 #else
 		if(mode == VICTIM_OVERALL)
 		{
-			curr_root_entry = (empty_block_root*)empty_block_list + ssd->empty_block_table_index[f2fs_block_type-DATA_BLOCK];
-			if(curr_root_entry->head[f2fs_block_type-DATA_BLOCK] == NULL)
+			curr_root_entry = (empty_block_root*)empty_block_list + ssd->empty_block_table_index;
+			if(curr_root_entry->head == NULL)
 			{
 				if(curr_root_entry->empty_head == NULL)
 				{
-					ssd->empty_block_table_index[f2fs_block_type-DATA_BLOCK]++;
-                    if(ssd->empty_block_table_index[f2fs_block_type-DATA_BLOCK] == EMPTY_TABLE_ENTRY_NB){
-                     	ssd->empty_block_table_index[f2fs_block_type-DATA_BLOCK] = 0;
+					ssd->empty_block_table_index++;
+                    if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
+                     	ssd->empty_block_table_index = 0;
                 	}
 					continue;
 				}
 				else
 				{
-					if(ssd->empty_block_table_index[f2fs_block_type-DATA_BLOCK]==0)
+					if(ssd->empty_block_table_index==0)
 					{
 						int i;
 						empty_block_entry* tmp_curr_empty_block;
@@ -617,11 +612,11 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
 							tmp_curr_empty_block =  tmp_curr_root_entry->empty_head;
 							tmp_curr_root_entry->empty_head = tmp_curr_root_entry->empty_head->next;
 							tmp_curr_empty_block->next = NULL;
-							tmp_curr_root_entry->head[f2fs_block_type-DATA_BLOCK] = tmp_curr_empty_block;
+							tmp_curr_root_entry->head = tmp_curr_empty_block;
 							tmp_curr_root_entry->empty_block_nb -= 1;
 						}
-						ssd->empty_block_table_index[f2fs_block_type-DATA_BLOCK]++;
-						return ((empty_block_root*)empty_block_list)->head[f2fs_block_type-DATA_BLOCK];
+						ssd->empty_block_table_index++;
+						return ((empty_block_root*)empty_block_list)->head;
 					}
 					else
 					{
@@ -629,9 +624,9 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
 					}	
 				}				
 			}
-			else if(curr_root_entry->head[f2fs_block_type-DATA_BLOCK] != NULL)
+			else if(curr_root_entry->head != NULL)
 			{
-				curr_empty_block = curr_root_entry->head[f2fs_block_type-DATA_BLOCK];
+				curr_empty_block = curr_root_entry->head;
 				if(curr_empty_block->curr_phy_page_nb == PAGE_NB)
 				{
 					if(curr_empty_block->phy_flash_nb == sc->FLASH_NB-1 
@@ -643,32 +638,32 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
 						for(i=0; i<EMPTY_TABLE_ENTRY_NB; i++)
 						{
 							tmp_curr_root_entry = (empty_block_root*)empty_block_list + i;
-							tmp_curr_empty_block = tmp_curr_root_entry->head[f2fs_block_type-DATA_BLOCK];
+							tmp_curr_empty_block = tmp_curr_root_entry->head;
 							INSERT_VICTIM_BLOCK(ssd, tmp_curr_empty_block);
 							ssd->total_empty_block_nb -= 1;
-							tmp_curr_root_entry->head[f2fs_block_type-DATA_BLOCK] = NULL;
+							tmp_curr_root_entry->head = NULL;
 						}
-						if(ssd->empty_block_table_index[f2fs_block_type-DATA_BLOCK]!=EMPTY_TABLE_ENTRY_NB-1)
+						if(ssd->empty_block_table_index!=EMPTY_TABLE_ENTRY_NB-1)
 						{
-							printf("ERROR[%s]: ssd->empty_block_table_index[f2fs_block_type-DATA_BLOCK]!=EMPTY_TABLE_ENTRY_NB-1", __FUNCTION__);
+							printf("ERROR[%s]: ssd->empty_block_table_index!=EMPTY_TABLE_ENTRY_NB-1", __FUNCTION__);
 						}
-						ssd->empty_block_table_index[f2fs_block_type-DATA_BLOCK] = 0;
+						ssd->empty_block_table_index = 0;
 					}
 					else
 					{
-						ssd->empty_block_table_index[f2fs_block_type-DATA_BLOCK]++;
-						if(ssd->empty_block_table_index[f2fs_block_type-DATA_BLOCK] == EMPTY_TABLE_ENTRY_NB){
+						ssd->empty_block_table_index++;
+						if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
 							printf("ERROR[%s]: This cannot happen!\n");
-							ssd->empty_block_table_index[f2fs_block_type-DATA_BLOCK] = 0;
+							ssd->empty_block_table_index = 0;
 						}
 					}
 					continue;
 				}
 				else
 				{
-					ssd->empty_block_table_index[f2fs_block_type-DATA_BLOCK]++;
-                	if(ssd->empty_block_table_index[f2fs_block_type-DATA_BLOCK] == EMPTY_TABLE_ENTRY_NB){
-                    	ssd->empty_block_table_index[f2fs_block_type-DATA_BLOCK] = 0;
+					ssd->empty_block_table_index++;
+                	if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
+                    	ssd->empty_block_table_index = 0;
                 	}
                 	return curr_empty_block;
 				}
@@ -738,10 +733,10 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
             if(curr_root_entry->empty_block_nb == 0){
 
                 mapping_index++;
-                ssd->empty_block_table_index[f2fs_block_type-TYPE_BASE]++;
+                ssd->empty_block_table_index++;
                 if(mapping_index == EMPTY_TABLE_ENTRY_NB){
                     mapping_index = 0;
-                    ssd->empty_block_table_index[f2fs_block_type-TYPE_BASE] = 0;
+                    ssd->empty_block_table_index = 0;
                 }
                 continue;
             }
