@@ -34,10 +34,13 @@ void GC_CHECK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_
 		if(ssd->gc_count % 100 == 1)
 		{
 			ssd->is_GC=1;
+			ssd->gc_count++;
 			ws_print(ssd);
+
 			if(ssd->gc_count % 10000 == 1)
 			{
 				ssd->is_GC=2;
+				ssd->gc_count++;
 				ws_print(ssd);
 			}
 		}
@@ -308,8 +311,6 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 	INSERT_EMPTY_BLOCK(ssd, victim_phy_flash_nb, victim_phy_block_nb);
     ssd->time_up += get_ts_in_ns() - up_start;
 
-	ssd->gc_count++;
-
 #ifdef WS_COUNT
 	ssd->ws_gc_count++;
 	ssd->ws_erase_count++;
@@ -364,12 +365,6 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
     }
 #endif
 
-    // if (ssd->gc_count % 100 == 0) {
-    //     printf("[%s],real_blocking_gc=%d,total_gc_cal=%d, avg_copy_pages=%d, "
-    //             "total_stacking_gc=%d\n", ssd->ssdname, 
-    //             ssd->gc_count-ssd->stacking_gc_count, ssd->gc_count, 
-    //             copy_page_nb, ssd->stacking_gc_count);
-    // }
 
 #ifdef MONITOR_ON
 	char szTemp[1024];
@@ -748,7 +743,7 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 	}
     ssd->time_up += get_ts_in_ns() - up_start;
 
-	ssd->gc_count++;
+
 #ifdef WS_COUNT
 	ssd->ws_gc_count++;
 	ssd->ws_erase_count += FLASH_NB * PLANES_PER_FLASH;
@@ -805,13 +800,6 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
     }
 #endif
 
-    // if (ssd->gc_count % 100 == 0) 
-	// {
-    //     printf("[%s],real_blocking_gc=%d,total_gc_cal=%d, avg_copy_pages=%d, "
-    //             "total_stacking_gc=%d\n", ssd->ssdname, 
-    //             ssd->gc_count-ssd->stacking_gc_count, ssd->gc_count, 
-    //             copy_page_nb, ssd->stacking_gc_count);
-    // }
 
 #ifdef MONITOR_ON
 	char szTemp[1024];

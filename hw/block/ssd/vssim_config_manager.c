@@ -16,6 +16,7 @@ void INIT_WS_COUNT(struct ssdstate *ssd)
 	ssd->is_GC=0;
     ssd->ws_gc_count=0;
     ssd->ws_erase_count=0;
+	ssd->gc_count = 0;
     
     ssd->ws_total_read_count=0;
     ssd->ws_total_write_count=0;
