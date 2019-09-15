@@ -766,8 +766,8 @@ int SELECT_VICTIM_SUPERBLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_b
 	victim_block_entry* victim_block[SB_BLK_NB]; //  WQL:assume plane_per_flash = 1
 
 	block_state_entry* b_s_entry;
-	int curr_valid_page_nb;
-	int min_valid_page_nb;
+	int curr_valid_page_nb = 0;
+	int min_valid_page_nb = PAGE_NB * FLASH_NB * sc->PLANES_PER_FLASH;
 
 	if(ssd->total_victim_block_nb == 0)
 	{
@@ -791,6 +791,8 @@ int SELECT_VICTIM_SUPERBLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_b
 
 	for(i=0;i<entry_nb;i++)
 	{
+		curr_valid_page_nb = 0;
+
 	    for(j=0;j<VICTIM_TABLE_ENTRY_NB;j++)
 		{
 			curr_v_b_root = victim_block_list + j;
