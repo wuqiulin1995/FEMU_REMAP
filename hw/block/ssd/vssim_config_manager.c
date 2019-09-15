@@ -27,6 +27,9 @@ void INIT_WS_COUNT(struct ssdstate *ssd)
 	ssd->ws_time=0;
 	ssd->ws_temp=0;
 
+	ssd->wql_temp = 0;
+	ssd->wql_time = 0;
+
 	ssd->ws_old_new_e=0;   //old lpn == new lpn
     ssd->ws_old_new_ne=0;  //old lpn != new lpn
     ssd->ws_user_page_write_between_trim=0;
@@ -50,6 +53,111 @@ void INIT_WS_COUNT(struct ssdstate *ssd)
 invalid_page, prefree_page, freepage, \n");
 	fclose(fout);
     return;
+}
+
+void wql_print(struct ssdstate *ssd)
+{
+	struct ssdconf *sc = &(ssd->ssdparams);
+    int FLASH_NB = sc->FLASH_NB;
+    int BLOCK_NB = sc->BLOCK_NB;
+    int PAGE_NB = sc->PAGE_NB;
+    int VICTIM_TABLE_ENTRY_NB = sc->VICTIM_TABLE_ENTRY_NB;
+	int SB_BLK_NB = sc->FLASH_NB * sc->PLANES_PER_FLASH;
+
+    victim_block_root *victim_block_list = (victim_block_root *)ssd->victim_block_list;
+
+	int i, j;
+	int entry_nb = 0;
+	
+	int entry_nb1=0;
+	int k, off = 0;
+	unsigned int first_block_nb;
+
+	FILE *fout = NULL; 
+
+	victim_block_root* curr_v_b_root;
+	victim_block_entry* curr_v_b_entry;
+	victim_block_entry* victim_block[SB_BLK_NB]; //  WQL:assume plane_per_flash = 1
+
+	block_state_entry* b_s_entry;
+	int curr_valid_page_nb = 0, curr_prefree_page_nb = 0;
+	int min_valid_page_nb = PAGE_NB * FLASH_NB * sc->PLANES_PER_FLASH;
+	if(ssd->total_victim_block_nb == 0)
+	{
+		printf("ERROR[%s] There is no victim block--1\n", __FUNCTION__);
+		return FAIL;
+	}
+
+	curr_v_b_root = victim_block_list;
+
+	if(curr_v_b_root->victim_block_nb != 0)
+	{	
+		entry_nb = curr_v_b_root->victim_block_nb;
+		curr_v_b_entry = curr_v_b_root->head;
+	}
+	else
+	{
+		entry_nb = 0;
+		printf("ERROR[%s] There is no victim superblock--2\n", __FUNCTION__);
+		return FAIL;
+	}
+
+	curr_v_b_root = victim_block_list;
+
+	fout = fopen(SB_PRE_FILENAME, "w");
+	if(fout == NULL)
+	{
+		printf("Error: Output file open error\n");
+		getchar();
+	}
+	fprintf(fout, "SB count, prefree page nb in SB, total prefree page nb,\n");
+
+	for(i=0;i<entry_nb;i++)
+	{
+		curr_valid_page_nb = 0; 
+		curr_prefree_page_nb = 0;
+		
+		for(j=0;j<VICTIM_TABLE_ENTRY_NB;j++)
+		{
+			curr_v_b_root = victim_block_list + j;
+			if(i==0)
+			{
+				entry_nb1 = curr_v_b_root->victim_block_nb;
+				if(entry_nb1!=entry_nb)
+				{
+					printf("ERROR[%s] Victim block count error\n", __FUNCTION__);
+					return FAIL;
+				}
+			}
+
+			curr_v_b_entry = curr_v_b_root->head;
+			for(k=0;k<i;k++)
+			{
+				curr_v_b_entry = curr_v_b_entry->next;
+			}
+
+			if(j==0)
+			{
+				first_block_nb = curr_v_b_entry->phy_block_nb;
+			}
+
+			if(curr_v_b_entry->phy_block_nb != first_block_nb)
+			{
+				printf("ERROR[%s] Victim block offset error\n", __FUNCTION__);
+				return FAIL;
+			}
+			
+			b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, curr_v_b_entry->phy_flash_nb, curr_v_b_entry->phy_block_nb);
+			curr_valid_page_nb += b_s_entry->valid_page_nb;
+			curr_prefree_page_nb += b_s_entry->prefree_page_nb;
+		}
+		fprintf(fout, "%d, %d, %d,\n", i, curr_prefree_page_nb, ssd->ws_ppa_pre_free);
+	}
+	
+
+	fflush(fout);
+	fclose(fout);
+	return;
 }
 
 void ws_print(struct ssdstate *ssd)

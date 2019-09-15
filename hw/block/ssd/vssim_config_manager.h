@@ -278,6 +278,9 @@ struct ssdstate {
     int64_t ws_time;    //Used for printf.
     int64_t ws_temp;    //Used for printf.
 
+    int64_t wql_time;
+    int64_t wql_temp;
+
     int ws_old_new_e;   //old lpn == new lpn
     int ws_old_new_ne;  //old lpn != new lpn
 
@@ -523,6 +526,7 @@ int64_t CALC_DA_BM_ENTRY_NB(struct ssdstate *ssd);
 //Add by shuai. Statistics.
 void INIT_WS_COUNT(struct ssdstate *ssd);
 void ws_print(struct ssdstate *ssd);
+void wql_print(struct ssdstate *ssd);
 #endif //WS_COUNT
 
 #endif

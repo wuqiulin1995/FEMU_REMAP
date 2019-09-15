@@ -398,6 +398,12 @@ int64_t _FTL_READ(struct ssdstate *ssd, int64_t sector_nb, unsigned int length)
 		ws_print(ssd);
 		ssd->ws_time = ssd->ws_temp;
 	}
+	ssd->wql_temp = get_ts_in_ns();
+	if(ssd->wql_temp - ssd->wql_time >= 1e9 * PRINT_INTERVAL_WQL)
+	{
+		wql_print(ssd);
+		ssd->wql_time = ssd->wql_temp;
+	}
 #endif
         if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
             max_need_to_emulate_tt = cur_need_to_emulate_tt;
@@ -685,6 +691,12 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 		ssd->is_GC = 3;
 		ws_print(ssd);
 		ssd->ws_time = ssd->ws_temp;
+	}
+	ssd->wql_temp = get_ts_in_ns();
+	if(ssd->wql_temp - ssd->wql_time >= 1e9 * PRINT_INTERVAL_WQL)
+	{
+		wql_print(ssd);
+		ssd->wql_time = ssd->wql_temp;
 	}
 #endif
         if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {

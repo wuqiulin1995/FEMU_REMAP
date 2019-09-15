@@ -184,6 +184,12 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 				ws_print(ssd);
 				ssd->ws_time = ssd->ws_temp;
 			}
+			ssd->wql_temp = get_ts_in_ns();
+			if(ssd->wql_temp - ssd->wql_time >= 1e9 * PRINT_INTERVAL_WQL)
+			{
+				wql_print(ssd);
+				ssd->wql_time = ssd->wql_temp;
+			}
 
 #endif //WS_COUNT
 			//old_ppn =  victim_block_base_ppn  + i;
@@ -240,7 +246,12 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 				ws_print(ssd);
 				ssd->ws_time = ssd->ws_temp;
 			}
-
+			ssd->wql_temp = get_ts_in_ns();
+			if(ssd->wql_temp - ssd->wql_time >= 1e9 * PRINT_INTERVAL_WQL)
+			{
+				wql_print(ssd);
+				ssd->wql_time = ssd->wql_temp;
+			}
 #endif //WS_COUNT
 			//old_ppn =  victim_block_base_ppn  + i;
             old_ppn = victim_phy_flash_nb*sc->PAGES_PER_FLASH + victim_phy_block_nb*sc->PAGE_NB + i;
@@ -310,7 +321,12 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 		ws_print(ssd);
 		ssd->ws_time = ssd->ws_temp;
 	}
-
+	ssd->wql_temp = get_ts_in_ns();
+	if(ssd->wql_temp - ssd->wql_time >= 1e9 * PRINT_INTERVAL_WQL)
+	{
+		wql_print(ssd);
+		ssd->wql_time = ssd->wql_temp;
+	}
 #endif
 
     /* Coperd: keep trace of #gc of last time */
@@ -626,7 +642,12 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 				ws_print(ssd);
 				ssd->ws_time = ssd->ws_temp;
 			}
-
+			ssd->wql_temp = get_ts_in_ns();
+			if(ssd->wql_temp - ssd->wql_time >= 1e9 * PRINT_INTERVAL_WQL)
+			{
+				wql_print(ssd);
+				ssd->wql_time = ssd->wql_temp;
+			}
 #endif //WS_COUNT	
 				//old_ppn =  victim_block_base_ppn  + i;
            		old_ppn = victim_phy_flash_nb*sc->PAGES_PER_FLASH + victim_phy_block_nb*sc->PAGE_NB + i;
@@ -645,7 +666,7 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 			else if(valid_array[i]=='P')
 			{	
 #ifdef GC_VICTIM_OVERALL
-				ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, PRE_FREE_BLOCK);
+				ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, DATA_BLOCK);
         	   	//new_ppn = new_ppn_base;
         	    //new_ppn_base++;
 #else
@@ -679,7 +700,12 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 				ws_print(ssd);
 				ssd->ws_time = ssd->ws_temp;
 			}
-
+			ssd->wql_temp = get_ts_in_ns();
+			if(ssd->wql_temp - ssd->wql_time >= 1e9 * PRINT_INTERVAL_WQL)
+			{
+				wql_print(ssd);
+				ssd->wql_time = ssd->wql_temp;
+			}
 #endif //WS_COUNT
 				//old_ppn =  victim_block_base_ppn  + i;
            		old_ppn = victim_phy_flash_nb*sc->PAGES_PER_FLASH + victim_phy_block_nb*sc->PAGE_NB + i;
@@ -690,7 +716,7 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 #else
 				lpn = GET_INVERSE_MAPPING_INFO(ssd, old_ppn);
 #endif
-				UPDATE_NEW_PAGE_MAPPING2(ssd, lpn, new_ppn, PRE_FREE_BLOCK);
+				UPDATE_NEW_PAGE_MAPPING2(ssd, lpn, new_ppn, DATA_BLOCK);
 
 				copy_page_nb++;
 				valid_page_nb[victim_phy_flash_nb]++;
@@ -734,7 +760,12 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 		ws_print(ssd);
 		ssd->ws_time = ssd->ws_temp;
 	}
-
+	ssd->wql_temp = get_ts_in_ns();
+	if(ssd->wql_temp - ssd->wql_time >= 1e9 * PRINT_INTERVAL_WQL)
+	{
+		wql_print(ssd);
+		ssd->wql_time = ssd->wql_temp;
+	}
 #endif
 
     /* Coperd: keep trace of #gc of last time */
@@ -817,7 +848,6 @@ int SELECT_VICTIM_SUPERBLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_b
 	int k, off = 0;
 	unsigned int first_block_nb;
 
-	FILE *fout = NULL; 
 
 	victim_block_root* curr_v_b_root;
 	victim_block_entry* curr_v_b_entry;
@@ -847,21 +877,10 @@ int SELECT_VICTIM_SUPERBLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_b
 		return FAIL;
 	}
 
-	if(ssd->gc_count % 10 == 1)
-	{
-		fout = fopen(SB_PRE_FILENAME, "w");
-		if(fout == NULL)
-		{
-			printf("Error: Output file open error\n");
-			getchar();
-		}
-		fprintf(fout, "SB count, prefree page nb in SB, total prefree page nb\n");
-	}
-
 	for(i=0;i<entry_nb;i++)
 	{
 		curr_valid_page_nb = 0;
-		curr_prefree_page_nb = 0;
+		//curr_prefree_page_nb = 0;
 
 	    for(j=0;j<VICTIM_TABLE_ENTRY_NB;j++)
 		{
@@ -894,17 +913,13 @@ int SELECT_VICTIM_SUPERBLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_b
 			}
 			
 			b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, curr_v_b_entry->phy_flash_nb, curr_v_b_entry->phy_block_nb);
-			curr_valid_page_nb += b_s_entry->valid_page_nb;
-			curr_prefree_page_nb += b_s_entry->prefree_page_nb;			
+			curr_valid_page_nb += (b_s_entry->valid_page_nb + b_s_entry->prefree_page_nb);
+			//curr_prefree_page_nb += b_s_entry->prefree_page_nb;			
 			
 			// curr_v_b_root++;
 		}
 
 
-		if(ssd->gc_count % 10 == 1 && curr_prefree_page_nb != 0)
-		{
-			fprintf(fout, "%d, %d, %d\n", i, curr_prefree_page_nb, ssd->ws_ppa_pre_free);
-		}
 					
 		if(curr_valid_page_nb < min_valid_page_nb){
 			off = i;
@@ -912,11 +927,6 @@ int SELECT_VICTIM_SUPERBLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_b
 		}
 	}
 
-	if(ssd->gc_count % 10 == 1)
-	{
-		fflush(fout);
-		fclose(fout);
-	}	
 
 	if(min_valid_page_nb == PAGE_NB * FLASH_NB * sc->PLANES_PER_FLASH)
 	{

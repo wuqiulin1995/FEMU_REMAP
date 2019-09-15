@@ -36,6 +36,8 @@
 #define OUTPUT_FILENAME ("/home/nvm/statistic.csv")
 #define SB_PRE_FILENAME ("/home/nvm/sb_pre_nfl.csv")
 #define PRINT_INTERVAL 10	//输出的时间间隔（秒）
+#define PRINT_INTERVAL_WQL 490
+
 //#define OUTPOU_FILE "~/4head_counter.dat"
 #endif
 
