@@ -34,13 +34,13 @@ void GC_CHECK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_
 		if(ssd->gc_count % 100 == 1)
 		{
 			ssd->is_GC=1;
-			ssd->gc_count++;
+			// ssd->gc_count++;
 			ws_print(ssd);
 
 			if(ssd->gc_count % 10000 == 1)
 			{
 				ssd->is_GC=2;
-				ssd->gc_count++;
+				// ssd->gc_count++;
 				ws_print(ssd);
 			}
 		}
@@ -54,6 +54,7 @@ void GC_CHECK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_
 			break;
 		}
 		//printf("ret = %d\n", ret);
+		ssd->gc_count++;
 	}
 #else
 	empty_block_root* curr_root_entry = (empty_block_root*)empty_block_list + mapping_index;
