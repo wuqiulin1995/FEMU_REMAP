@@ -33,8 +33,8 @@
 
 #define WS_COUNT
 #ifdef WS_COUNT
-#define OUTPUT_FILENAME ("/home/nvm/statistic_nfl.csv")
-#define SB_PRE_FILENAME ("/home/nvm/sb_pre_nfl.csv")
+#define OUTPUT_FILENAME ("/home/nvm/statistic_nfl_filebenfileserver.csv")
+#define SB_PRE_FILENAME ("/home/nvm/sb_pre_nfl_filebenfileserver.csv")
 #define PRINT_INTERVAL 10	//输出的时间间隔（秒）
 #define PRINT_INTERVAL_WQL 490
 

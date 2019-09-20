@@ -579,7 +579,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 		}
 
 		write_sects = SECTORS_PER_PAGE - left_skip - right_skip;
-
+		lpn = lba / (int64_t)SECTORS_PER_PAGE;
 		//add by hao
 #ifdef MULTISTREAM	
 
@@ -613,7 +613,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 #endif	//EXT4
 #else	//MULTISTREAM
 		f2fs_type = request1->lpns_info[write_page_nb].f2fs_type;
-		f2fs_current_lpn = request1->lpns_info[write_page_nb].f2fs_current_lpn;
+		f2fs_current_lpn = lpn;
 		f2fs_old_lpn = request1->lpns_info[write_page_nb].f2fs_old_lpn;
 		//printf("ftl_write: current %ld, old %ld\n", f2fs_current_lpn, f2fs_old_lpn);
 
@@ -651,7 +651,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 		}
 
 		//printf("hao_debug:_FTL_WRITEbbbbbbbbbbbbbbbbbbbbbb %d\n", bloom_temp);
-		lpn = lba / (int64_t)SECTORS_PER_PAGE;
+
 		old_ppn = GET_MAPPING_INFO(ssd, lpn);
 		//printf("hao_debug:_FTL_WRITE lpn old_ppn %d %d\n",lpn, old_ppn);
 		n_io_info = CREATE_NAND_IO_INFO(ssd, write_page_nb, WRITE, io_page_nb, ssd->io_request_seq_nb);
