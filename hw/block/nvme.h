@@ -7,6 +7,12 @@
 #include "femu/femu-oc.h"
 #include "ssd/vssim_config_manager.h"
 
+// void femu_txw_memcpy(NvmeCtrl *n, struct request_meta *request1);
+// int ftl_meta_state_get(struct ssdstate *ssd, uint64_t lpn, uint32_t *state);
+// int ftl_meta_write(struct ssdstate *ssd, void *meta, struct request_meta *request1,  uint64_t i);
+// void *ftl_meta_index(struct ssdstate *ssd, void *meta, uint32_t index);
+// int ftl_meta_read(struct ssdstate *ssd, void *meta);
+
 typedef struct NvmeBar {
     uint64_t    cap;
     uint32_t    vs;
@@ -247,6 +253,7 @@ enum NvmeAdminCommands {
     NVME_ADM_CMD_SECURITY_RECV  = 0x82,
     NVME_ADM_CMD_SET_DB_MEMORY  = 0x7c,
     NVME_ADM_CMD_FEMU_DEBUG     = 0xee,
+    NVME_ADM_CMD_REMAP          = 0x3c,
 };
 
 enum NvmeIoCommands {
@@ -258,6 +265,18 @@ enum NvmeIoCommands {
     NVME_CMD_WRITE_ZEROS        = 0x08,
     NVME_CMD_DSM                = 0x09,
 };
+
+typedef struct NvmeRemap {
+    uint8_t     opcode;
+    uint8_t     flags;
+    uint16_t    cid;
+    uint32_t    rsvd1;
+    uint64_t    src_lpn;
+    uint64_t    dst_lpn;
+    uint32_t    len;
+    uint32_t    ope;
+    uint32_t    rsvd2[8];
+} NvmeRemap;
 
 
 typedef struct NvmeDeleteQ {

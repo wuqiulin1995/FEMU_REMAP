@@ -17,6 +17,17 @@
 #include "ftl_type.h"
 #include "god.h"
 
+#define MAX_LPN_CNT 4
+#define DATA_BITS_NVME 12
+#define PI_BYTES_NVME 24
+
+#define X_FTL
+#define WAL_WRITE 100
+#define CP_WRITE 102
+#define REMAP_CKPT 2
+#define REMAP_COPY 3
+#define REMAP_MOVE 4
+
 #define WHOLE_BLOCKING      1
 #define CHANNEL_BLOCKING    2
 #define CHIP_BLOCKING       3
@@ -27,44 +38,23 @@
 #define FILTER_SIZE 14
 #define FILTER_SIZE_BYTES (1 << (FILTER_SIZE - 3))
 
-#define TYPE_BASE 101
-#define MAIN_AREA 55808
-#define GC_ALPHA 1	//GC victim block: valid page number + prefree page number * α
+#define STAT_COUNT
 
-#define WS_COUNT
-#ifdef WS_COUNT
-#define OUTPUT_FILENAME ("/home/nvm/statistic_nfl_mongo-12-23.csv")
-#define SB_PRE_FILENAME ("/home/nvm/sb_pre_nfl_mongo-12-23.csv")
+#ifdef STAT_COUNT
+#define STAT_OUTPUT_FILE ("/home/b507/stat.csv")
 #define PRINT_INTERVAL 10	//输出的时间间隔（秒）
-#define PRINT_INTERVAL_WQL 490
-
-//#define OUTPOU_FILE "~/4head_counter.dat"
 #endif
 
 #define SUPERBLOCK
 #define SB_DEBUG
-#ifdef SB_DEBUG	
 
+#ifdef SB_DEBUG	
 typedef struct SUPERBLOCK_DEBUG
 {
 	int plane_nb;
 	int block_nb;
 }sb_debug;
-
-
 #endif
-
-//#define EXT4
-
-// parameters for EXT4
-#ifdef EXT4
-
-#define TYPE_NUM 4	//The number of Empty heads.
-#define BG_NUM 4   	//The number of blockgroups in EXT4 FS.
-#define BG_SIZE (2*1024*1024*2)  // secotrs per 2GB
-
-#endif //EXT4
-
 
 //extern int GC_MODE;
 //extern int64_t *gc_slot;
@@ -82,7 +72,6 @@ typedef struct SUPERBLOCK_DEBUG
 	#define GC_ON			/* Garbage Collection for PAGE MAP */
 	#define GC_TRIGGER_OVERALL
 	#define GC_VICTIM_OVERALL
-	//#define MULTISTREAM
 	//#define WRITE_NOPARAL
 	//#define FTL_MAP_CACHE		/* FTL MAP Cache for PAGE MAP */
 #endif
@@ -189,37 +178,10 @@ typedef struct SUPERBLOCK_DEBUG
 // #define DATA_BLOCK              39
 // #define EMPTY_DATA_BLOCK        40
 
-
-
-
-
 /*New Block Type */
 
 #define DATA_BLOCK                39  //ready to change
-#define PRE_FREE_BLOCK			  40
-
 #define EMPTY_BLOCK               100
-
-#define METADATA_BLOCK            101
-
-
-#ifndef EXT4
-#define DATA_HOT_HOT_BLOCK         102
-#define DATA_HOT_COLD_BLOCK        103
-#define DATA_WARM_HOT_BLOCK        104
-#define DATA_WARM_COLD_BLOCK       105
-#define DATA_COLD_HOT_BLOCK        106
-#define DATA_COLD_COLD_BLOCK       107
-
-
-#define NODE_HOT_HOT_BLOCK         108
-#define NODE_HOT_COLD_BLOCK        109
-#define NODE_WARM_HOT_BLOCK        110
-#define NODE_WARM_COLD_BLOCK       111
-#define NODE_COLD_HOT_BLOCK        112
-#define NODE_COLD_COLD_BLOCK       113
-#endif //EXT4
-
 
 /* GC Copy Valid Page Type */
 #define VICTIM_OVERALL	41
@@ -229,7 +191,6 @@ typedef struct SUPERBLOCK_DEBUG
 /* Page Type */
 #define VALID		50
 #define INVALID		51
-#define PRE_FREE	52
 
 /* Caller Type for Hybrid FTL */
 #if defined FAST_FTL || defined LAST_FTL

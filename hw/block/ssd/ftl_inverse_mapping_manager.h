@@ -25,28 +25,16 @@ struct ssdstate;
 
 typedef struct block_state_entry
 {
-	int valid_page_nb;
-	int prefree_page_nb;
+	int valid_page_nb;  // valid_array > 0
 	int type;
 	unsigned int erase_count;
-	char* valid_array;
-
+	int8_t* valid_array;  // ref cnt, -1: invalid
 }block_state_entry;
 
 typedef struct empty_block_root
 {
 	struct empty_block_entry* empty_head;
-#ifdef MULTISTREAM
-#ifdef EXT4
-	struct empty_block_entry* head[TYPE_NUM];
-#else //EXT4
-	struct empty_block_entry* head[13];
-#endif //EXT4
-#else //MULTISTREAM
-
 	struct empty_block_entry* head;
-	
-#endif //MULTISTREAM
 	struct empty_block_entry* tail;
 	unsigned int empty_block_nb;
 }empty_block_root;
@@ -57,11 +45,6 @@ typedef struct empty_block_entry
 	unsigned int phy_block_nb;
 	unsigned int curr_phy_page_nb;
 	struct empty_block_entry* next;
-
-/*#ifdef MULTISTREAM
-	struct empty_block_entry* pre;
-#endif*/
-
 }empty_block_entry;
 
 typedef struct victim_block_root
@@ -79,6 +62,12 @@ typedef struct victim_block_entry
 	struct victim_block_entry* next;
 }victim_block_entry;
 
+typedef struct inverse_mapping_entry {
+    int8_t remap;
+    int8_t lpn_cnt;
+    int64_t lpn[MAX_LPN_CNT];
+}inverse_mapping_entry;
+
 //extern victim_block_entry* victim_block_list_head;
 //extern victim_block_entry* victim_block_list_tail;
 
@@ -94,7 +83,7 @@ void TERM_EMPTY_BLOCK_LIST(struct ssdstate *ssd);
 void TERM_VICTIM_BLOCK_LIST(struct ssdstate *ssd);
 void TERM_VALID_ARRAY(struct ssdstate *ssd);
 
-empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_index, int f2fs_block_type);
+empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_index);
 int INSERT_EMPTY_BLOCK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_block_nb);
 
 int INSERT_VICTIM_BLOCK(struct ssdstate *ssd, empty_block_entry* full_block);
@@ -102,8 +91,10 @@ int EJECT_VICTIM_BLOCK(struct ssdstate *ssd, victim_block_entry* victim_block);
 
 block_state_entry* GET_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_block_nb);
 
-int64_t GET_INVERSE_MAPPING_INFO(struct ssdstate *ssd, int64_t lpn);
+inverse_mapping_entry* GET_INVERSE_MAPPING_INFO(struct ssdstate *ssd, int64_t lpn);
 int UPDATE_INVERSE_MAPPING(struct ssdstate *ssd, int64_t ppn, int64_t lpn);
+int INCREASE_INVERSE_MAPPING(struct ssdstate *ssd, int64_t ppn, int64_t lpn);
+int DECREASE_INVERSE_MAPPING(struct ssdstate *ssd, int64_t ppn, int64_t lpn);
 int UPDATE_BLOCK_STATE(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_block_nb, int type);
 int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_block_nb, unsigned int phy_page_nb, int valid);
 

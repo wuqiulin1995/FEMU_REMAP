@@ -35,7 +35,7 @@ void do_warmup(struct ssdstate *ssd)
 {
     struct ssdconf *sc = &(ssd->ssdparams);
     int GC_THRESHOLD_BLOCK_NB = sc->GC_THRESHOLD_BLOCK_NB;
-	struct request_f2fs *request1;           //add by hao
+	struct request_meta *request1;           //add by hao
 
     ssd->in_warmup_stage = true;
     char *tfname = "./data/warmup.trace";
@@ -68,13 +68,9 @@ void do_warmup(struct ssdstate *ssd)
         }
         if (w_type == 0)  {         /* skip writes */
             //continue;
-
-			request1->lpns_info[i].f2fs_ino = 0;
-			request1->lpns_info[i].f2fs_off = 0;
-			request1->lpns_info[i].f2fs_current_lpn = 0;
-			request1->lpns_info[i].f2fs_temp = 0;
-			request1->lpns_info[i].f2fs_type = 0;
-			request1->lpns_info[i].f2fs_old_lpn = 0;
+			request1->lpns_info[i].h_lpn = 0;
+            request1->lpns_info[i].flag = 0;
+            request1->lpns_info[i].tx_id = 0;
 
             request1->length =  w_length;
 
@@ -99,7 +95,7 @@ void do_rand_warmup(struct ssdstate *ssd)
     int GC_THRESHOLD_BLOCK_NB = sc->GC_THRESHOLD_BLOCK_NB;
     double GC_THRESHOLD = sc->GC_THRESHOLD;
 
-	struct request_f2fs *request1;           //add by hao
+	struct request_meta *request1;           //add by hao
 
     int i;
     int nios = 10;
@@ -129,13 +125,9 @@ void do_rand_warmup(struct ssdstate *ssd)
         ssd->in_warmup_stage = 1;
         i = 0;
         while(fscanf(fp, "%"PRId64"%d\n", &io_oft, &io_sz) != EOF) {
-			request1->lpns_info[i].f2fs_ino = 0;
-			request1->lpns_info[i].f2fs_off = 0;
-			request1->lpns_info[i].f2fs_current_lpn = 0;
-			request1->lpns_info[i].f2fs_temp = 0;
-			request1->lpns_info[i].f2fs_type = 0;
-			request1->lpns_info[i].f2fs_old_lpn = 0;
-
+			request1->lpns_info[i].h_lpn = 0;
+            request1->lpns_info[i].flag = 0;
+            request1->lpns_info[i].tx_id = 0;
 
 			request1->length = io_sz;
 
@@ -161,13 +153,9 @@ void do_rand_warmup(struct ssdstate *ssd)
 			io_sz = io[rand() % nios] * 2; 
 			io_oft = (rand() % (ssd_sz_in_sects / 4)) * 4;
 
-			request1->lpns_info[i].f2fs_ino = 0;
-			request1->lpns_info[i].f2fs_off = 0;
-			request1->lpns_info[i].f2fs_current_lpn = 0;
-			request1->lpns_info[i].f2fs_temp = 0;
-			request1->lpns_info[i].f2fs_type = 0;
-			request1->lpns_info[i].f2fs_old_lpn = 0;
-			
+			request1->lpns_info[i].h_lpn = 0;
+            request1->lpns_info[i].flag = 0;
+            request1->lpns_info[i].tx_id = 0;			
 			
 			request1->length = io_sz;
 			
@@ -195,6 +183,7 @@ void do_rand_warmup(struct ssdstate *ssd)
 void SSD_INIT(struct ssdstate *ssd)
 {
     memset(ssd, 0, sizeof(struct ssdstate));
+    ssd->xl2p_ppn = -1;
 
     /* Coperd: ssdstate structure initialization */
     strcpy(ssd->ssdname, "vssd");
@@ -242,7 +231,7 @@ void SSD_TERM(struct ssdstate *ssd)
 
 //long last_time = 0;
 
-int64_t SSD_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
+int64_t SSD_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 {
 #if 0
     int64_t curtime = get_usec();
@@ -257,10 +246,8 @@ int64_t SSD_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 	unsigned int length;
 	int64_t sector_nb;
 
-
 	length = request1->length; 
 	sector_nb = request1->sector_nb;
-
 
 #if defined SSD_THREAD	
 
@@ -404,7 +391,6 @@ int femu_discard_process(struct ssdstate *ssd, uint32_t length, int64_t sector_n
 
 	int64_t lba = sector_nb;
 	int64_t lpn;
-	int64_t old_ppn;
 
 	unsigned int remain = length;
 	unsigned int left_skip = sector_nb % SECTORS_PER_PAGE;
@@ -421,8 +407,8 @@ int femu_discard_process(struct ssdstate *ssd, uint32_t length, int64_t sector_n
      * to the GC mode you are using.
      */
 
-	while(remain > 0){
-
+	while(remain > 0)
+    {
 		if(remain > SECTORS_PER_PAGE - left_skip){
 			right_skip = 0;
 		}
@@ -430,25 +416,14 @@ int femu_discard_process(struct ssdstate *ssd, uint32_t length, int64_t sector_n
 			right_skip = SECTORS_PER_PAGE - left_skip - remain;
 		}
 
+        if(left_skip != 0 || right_skip != 0)
+        {
+            printf("ERROR[%s] Partical page trim!!\n", __FUNCTION__);
+        }
+
 		write_sects = SECTORS_PER_PAGE - left_skip - right_skip;
 
-		//add by hao
-
-		//printf("hao_debug:_FTL_WRITEbbbbbbbbbbbbbbbbbbbbbb %d\n", bloom_temp);
 		lpn = lba / (int64_t)SECTORS_PER_PAGE;
-		old_ppn = GET_MAPPING_INFO(ssd, lpn);
-		//printf("hao_debug:_FTL_WRITE lpn old_ppn %d %d\n",lpn, old_ppn);
-
-		if((left_skip || right_skip) && (old_ppn != -1)){
-            //printf("hao_dubug4444444444444: ssd page partial write\n");
-            /*cur_need_to_emulate_tt = SSD_PAGE_PARTIAL_WRITE(ssd,
-				CALC_FLASH(ssd, old_ppn), CALC_BLOCK(ssd, old_ppn), CALC_PAGE(ssd, old_ppn),
-				CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn),
-				n_io_info);*/
-		}
-
-		//printf("hao_debug:_FTL_WRITE new_ppn %d\n", new_ppn);
-        //printf("FTL-WRITE: lpn -> ppn: %"PRId64" -> %"PRId64"\n", lpn, new_ppn);
 
 		UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
         ssd->mapping_table[lpn] = -1;   //hao new add
@@ -458,18 +433,149 @@ int femu_discard_process(struct ssdstate *ssd, uint32_t length, int64_t sector_n
 		left_skip = 0;
 	}
 
-    ssd->is_GC = 0;
-    ws_print(ssd);
-    
-    // ssd->ws_newpage=0;
-    // ssd->ws_old_new_e=0;   //old lpn == new lpn
-    // ssd->ws_old_new_ne=0;  //old lpn != new lpn
-    // ssd->ws_erase_count=0;
-    // ssd->ws_user_page_write_between_trim=0;
-    // ssd->ws_gc_page_write_between_trim=0;
-	// ssd->ws_gc_old_lpn_count=0;
+#ifdef STAT_COUNT
+    ssd->stat_type = 2;
+    stat_print(ssd);
+#endif
 
-	return true;     
+	return SUCCESS;     
 }
 
+int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t len, uint32_t ope)
+{
+    int64_t *mapping_table = ssd->mapping_table;
+    uint64_t s_lpn = src_lpn, d_lpn = dst_lpn;
+    int64_t s_ppn = 0, d_ppn = 0;
+    int32_t remain = 0;
 
+    printf("remap process s_lpn = %lu, d_lpn = %lu, len = %u, ope = %u\n", s_lpn, d_lpn, len, ope);
+
+    switch(ope)
+    {
+    case REMAP_CKPT:
+        for(remain = len; remain > 0; remain--)
+        {
+            s_ppn = mapping_table[s_lpn];
+            d_ppn = mapping_table[d_lpn];
+
+            // printf("ckpt incresse s_lpn = %ld, s_ppn = %ld, d_lpn = %ld\n", s_lpn, s_ppn, d_lpn);
+
+            if((INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS))
+			{
+                UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);
+				if(d_ppn != -1)
+                {
+                    // printf("ckpt decresse d_lpn = %ld, d_ppn = %ld, s_ppn = %ld\n", d_lpn, d_ppn, s_ppn);
+
+                    if(DECREASE_INVERSE_MAPPING(ssd, d_ppn, d_lpn) == SUCCESS)
+                    {
+                        UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, d_ppn), CALC_BLOCK(ssd, d_ppn), CALC_PAGE(ssd, d_ppn), INVALID);
+                    }
+                }
+                mapping_table[d_lpn] = s_ppn;
+
+                // if(s_ppn != -1)
+                // {
+                //     printf("move decresse s_lpn = %ld, s_ppn = %ld, d_ppn = %ld\n", s_lpn, s_ppn, d_ppn);
+
+                //     if(DECREASE_INVERSE_MAPPING(ssd, s_ppn, s_lpn) == SUCCESS)
+                //     {
+                //         UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), INVALID);
+                //     }
+                // }
+				// mapping_table[s_lpn] = -1;
+
+				ssd->stat_remap_cnt++;
+			}
+
+            s_lpn++;
+            d_lpn++;
+        }
+        break;
+
+    case REMAP_COPY:
+        for(remain = len; remain > 0; remain--)
+        {
+            s_ppn = mapping_table[s_lpn];
+            d_ppn = mapping_table[d_lpn];
+
+            // printf("copy incresse s_lpn = %ld, s_ppn = %ld, d_lpn = %ld\n", s_lpn, s_ppn, d_lpn);
+
+			if(INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS)
+			{
+                UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);
+				if(d_ppn != -1)
+                {
+                    // printf("copy decresse d_lpn = %ld, d_ppn = %ld, s_ppn = %ld\n", d_lpn, d_ppn, s_ppn);
+
+                    if(DECREASE_INVERSE_MAPPING(ssd, d_ppn, d_lpn) == SUCCESS)
+                    {
+                        UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, d_ppn), CALC_BLOCK(ssd, d_ppn), CALC_PAGE(ssd, d_ppn), INVALID);
+                    }
+                }
+                mapping_table[d_lpn] = s_ppn;
+
+				ssd->stat_remap_cnt++;
+			}
+
+            s_lpn++;
+            d_lpn++;
+        }
+        break;
+    
+    case REMAP_MOVE:
+        for(remain = len; remain > 0; remain--)
+        {
+            s_ppn = mapping_table[s_lpn];
+            d_ppn = mapping_table[d_lpn];
+
+            // printf("move incresse s_lpn = %ld, s_ppn = %ld, d_lpn = %ld\n", s_lpn, s_ppn, d_lpn);
+
+			if(INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS)
+			{
+                UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);
+                if(d_ppn != -1)
+                {
+                    // printf("move decresse d_lpn = %ld, d_ppn = %ld, s_ppn = %ld\n", d_lpn, d_ppn, s_ppn);
+
+                    if(DECREASE_INVERSE_MAPPING(ssd, d_ppn, d_lpn) == SUCCESS)
+                    {
+                        UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, d_ppn), CALC_BLOCK(ssd, d_ppn), CALC_PAGE(ssd, d_ppn), INVALID);
+                    }
+                }
+                if(s_ppn != -1)
+                {
+                    // printf("move decresse s_lpn = %ld, s_ppn = %ld, d_ppn = %ld\n", s_lpn, s_ppn, d_ppn);
+
+                    if(DECREASE_INVERSE_MAPPING(ssd, s_ppn, s_lpn) == SUCCESS)
+                    {
+                        UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), INVALID);
+                    }
+                }
+
+				mapping_table[d_lpn] = s_ppn;
+				mapping_table[s_lpn] = -1;
+				ssd->stat_remap_cnt++;
+			}
+
+            s_lpn++;
+            d_lpn++;
+        }
+        break;
+    
+    default:
+        printf("ERROR[%s]: ERROR REMAP ope = %d\n", __FUNCTION__, ope);
+    }
+
+#ifdef STAT_COUNT
+    ssd->stat_temp = get_ts_in_ns();
+    if(ssd->stat_temp - ssd->stat_time >= 1e9 * PRINT_INTERVAL)
+    {
+        ssd->stat_type = 4;
+        stat_print(ssd);
+        ssd->stat_time = ssd->stat_temp;
+    }
+#endif //STAT_COUNT
+
+    return SUCCESS;
+}

@@ -10,23 +10,19 @@
 
 #include "common.h"
 
-
 //extern float filter_weight[FILTER_NUMBER];
 //extern unsigned char filter[FILTER_NUMBER][FILTER_SIZE_BYTES];       //filter[4][256]
 //add by hao from nvme driver
+
 struct t10_pi_tuple {
 	uint16_t guard_tag;	/* Checksum */
 	uint16_t app_tag;		/* Opaque storage */
 	uint32_t ref_tag;		/* Target LBA or indirect LBA */
-	uint32_t f2fs_ino;         //hao:4kb data coresponding ino
-	uint32_t f2fs_off;         //hao:4kb data coresponding off
-	uint32_t f2fs_old_lba;     //hao:4kb data coresponding old_lba
-	uint32_t f2fs_new_lba;     //hao:4kb data coresponding new_lba
-	uint32_t f2fs_temp;        //hao:4kb data coresponding temp
-	uint32_t f2fs_type;        //hao:4kb data coresponding type
+
+    uint32_t tx_id;
+    uint32_t flag;
+	uint64_t h_lpn;     //hao:4kb data coresponding home location lba
 };
-
-
 
 struct ssdconf {
     /* SSD Configuration */
@@ -161,28 +157,19 @@ struct ssdconf {
     uint64_t       max_page;
 };
 
-
 struct lpn_info
 {
-	int64_t f2fs_ino;
-	int64_t f2fs_off;
-	int f2fs_type;
-	int f2fs_temp;
-	int64_t f2fs_current_lpn;
-	int64_t f2fs_old_lpn;
+    uint32_t tx_id;
+    uint32_t flag;
+	int64_t h_lpn;
 };
 
-
-struct request_f2fs {
+struct request_meta {
 	unsigned int length;
 	int64_t sector_nb;
 
 	struct lpn_info lpns_info[512];
-
-
 };
-
-
 
 struct ssdstate {
     struct ssdconf ssdparams;
@@ -193,6 +180,7 @@ struct ssdstate {
     int64_t *gc_slot;
     FILE *statfp;
     char statfile[64];
+    int64_t xl2p_ppn;
 
     int block_cnt;
 
@@ -242,7 +230,7 @@ struct ssdstate {
     int64_t io_update_overhead; //=0;
 
 
-    int64_t* inverse_mapping_table;
+    void* inverse_mapping_table;
     void* block_state_table;
 
     void* empty_block_list;
@@ -250,52 +238,39 @@ struct ssdstate {
 
     int64_t total_empty_block_nb;
     int64_t total_victim_block_nb;
-#ifdef SUPERBLOCK
     unsigned int empty_block_table_index;
 
 #ifdef SB_DEBUG
     sb_debug sb_deb;
 #endif
 
-#else
-    unsigned int empty_block_table_index;
-#endif
-
-#ifdef WS_COUNT
     /* Statistic by WangShuai*/
     //Unit: Page
-    int is_GC;
+    uint8_t stat_type;  // 1: gc 100, 2: discard, 3: r/w/gc 10s, 4: remap 10s
 
-    int ws_gc_count;
-    int ws_erase_count;
+    uint64_t stat_time;    //Used for printf.
+    uint64_t stat_temp;    //Used for printf.
 
-    int ws_total_read_count;
-    int ws_total_write_count;
-    
-    int ws_gc_read_count;
-    int ws_gc_write_count;
+    uint32_t stat_total_read_count;
+    uint32_t stat_total_write_count;
+    uint32_t stat_host_write_count;
 
-    int64_t ws_time;    //Used for printf.
-    int64_t ws_temp;    //Used for printf.
+    uint32_t stat_gc_count;
+    uint32_t stat_erase_count;
 
-    int64_t wql_time;
-    int64_t wql_temp;
+    uint32_t stat_gc_write_count;
+    uint32_t stat_gc_remap_write;
+	uint32_t stat_remap_cnt;
+    uint32_t stat_commit_cnt;
+    uint32_t stat_cp_write;
 
-    int ws_old_new_e;   //old lpn == new lpn
-    int ws_old_new_ne;  //old lpn != new lpn
+    uint64_t stat_ppn_valid;
+    uint64_t stat_ppn_n21;
+	uint64_t stat_ppn_invalid; 
+    uint64_t stat_ppn_free;
 
-    int ws_user_page_write_between_trim;
-    int ws_gc_page_write_between_trim;
-    int ws_gc_old_lpn_count;
+    uint64_t stat_lpn_valid;
 
-    int ws_ppa_valid;
-	int ws_ppa_invalid; 
-	int ws_ppa_pre_free;
-    int ws_ppa_free;
-
-    int ws_newpage;
-
-#endif
     /* Average IO Time */
     double avg_write_delay;
     double total_write_count;
@@ -522,11 +497,13 @@ int64_t CALC_DA_PM_ENTRY_NB(struct ssdstate *ssd);
 int64_t CALC_DA_BM_ENTRY_NB(struct ssdstate *ssd);
 #endif
 
-#ifdef WS_COUNT
 //Add by shuai. Statistics.
-void INIT_WS_COUNT(struct ssdstate *ssd);
-void ws_print(struct ssdstate *ssd);
-void wql_print(struct ssdstate *ssd);
-#endif //WS_COUNT
+void INIT_STAT_COUNT(struct ssdstate *ssd);
+void stat_print(struct ssdstate *ssd);
+void metadata_print(struct ssdstate *ssd, int32_t i, uint32_t tx_id, uint32_t flag, int64_t h_lpn);
+void write_debug_print(struct ssdstate *ssd, int64_t lpn, int64_t new_ppn, int64_t old_ppn);
+void write_remap_print(struct ssdstate *ssd, int32_t i, int64_t dst_lpn, int64_t h_lpn);
+void increase_debug_print(struct ssdstate *ssd, int64_t ppn, int64_t lpn, int32_t lpn_cnt);
+void decrease_debug_print(struct ssdstate *ssd, int64_t ppn, int64_t lpn, int32_t lpn_cnt);
 
 #endif

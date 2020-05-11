@@ -7,10 +7,8 @@
 
 #include "common.h"
 
-#include <sys/types.h>
-
+#include <sys/types.h> 
 #include <sys/stat.h>
-
 
 int64_t* mapping_table;
 void* block_table_start;
@@ -35,6 +33,7 @@ void INIT_MAPPING_TABLE(struct ssdstate *ssd)
 	/* If mapping_table.dat file exists */
 	FILE* fp = fopen("./data/mapping_table.dat","r");
 	if(fp != NULL){
+        printf("init mapping table from file\n");
 		fread(ssd->mapping_table, sizeof(int64_t), sc->PAGE_MAPPING_ENTRY_NB, fp);
 	}
 	else{	
@@ -70,14 +69,8 @@ int64_t GET_MAPPING_INFO(struct ssdstate *ssd, int64_t lpn)
 	return ppn;
 }
 
-int GET_NEW_PAGE(struct ssdstate *ssd, int mode, int mapping_index, int64_t* ppn, int f2fs_block_type)
+int GET_NEW_PAGE(struct ssdstate *ssd, int mode, int mapping_index, int64_t* ppn)
 {
-    // FILE *fp = fopen("/home/nvm/temp.txt","a");
-    // if(fp == NULL)
-    // {
-    //     printf("FILE open error!\n");
-    //     return NULL;
-    // }
     struct ssdconf *sc = &(ssd->ssdparams);
     int BLOCK_NB = sc->BLOCK_NB;
     int PAGE_NB = sc->PAGE_NB;
@@ -85,10 +78,9 @@ int GET_NEW_PAGE(struct ssdstate *ssd, int mode, int mapping_index, int64_t* ppn
 
 	empty_block_entry* curr_empty_block;
 
-	curr_empty_block = GET_EMPTY_BLOCK(ssd, mode, mapping_index, f2fs_block_type);
+	curr_empty_block = GET_EMPTY_BLOCK(ssd, mode, mapping_index);
 
 #ifdef SB_DEBUG
-    int index = f2fs_block_type - DATA_BLOCK;
     int off = ssd->empty_block_table_index;
     int plane_nb = curr_empty_block->phy_flash_nb * sc->PLANES_PER_FLASH + curr_empty_block->phy_block_nb % sc->PLANES_PER_FLASH;
     int block_nb = curr_empty_block->phy_block_nb / sc->PLANES_PER_FLASH;
@@ -124,10 +116,10 @@ int GET_NEW_PAGE(struct ssdstate *ssd, int mode, int mapping_index, int64_t* ppn
 
 	/* If the flash memory has no empty block,
                 Get empty block from the other flash memories */
-        if(mode == VICTIM_INCHIP && curr_empty_block == NULL){
-                /* Try again */
-                curr_empty_block = GET_EMPTY_BLOCK(ssd, VICTIM_OVERALL, mapping_index, f2fs_block_type);
-        }
+    if(mode == VICTIM_INCHIP && curr_empty_block == NULL){
+        /* Try again */
+        curr_empty_block = GET_EMPTY_BLOCK(ssd, VICTIM_OVERALL, mapping_index);
+    }
 
 	if(curr_empty_block == NULL){
 		printf("ERROR[%s] fail\n", __FUNCTION__);
@@ -145,7 +137,6 @@ int GET_NEW_PAGE(struct ssdstate *ssd, int mode, int mapping_index, int64_t* ppn
 
 int UPDATE_OLD_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn)
 {
-
 	int64_t old_ppn;
 #ifdef FTL_MAP_CACHE
 	old_ppn = CACHE_GET_PPN(lpn);
@@ -161,75 +152,35 @@ int UPDATE_OLD_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn)
 		return SUCCESS;
 	}
 	else{
-        //printf("shuai_debug: got you!\n");
-		UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, old_ppn), CALC_BLOCK(ssd, old_ppn), CALC_PAGE(ssd, old_ppn), INVALID);
-		UPDATE_INVERSE_MAPPING(ssd, old_ppn, -1);
+        if(DECREASE_INVERSE_MAPPING(ssd, old_ppn, lpn) == SUCCESS)
+        {
+            // DECREASE_INVERSE_MAPPING(ssd, old_ppn, lpn);
+            UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, old_ppn), CALC_BLOCK(ssd, old_ppn), CALC_PAGE(ssd, old_ppn), INVALID);
+        }
 	}
 
 	return SUCCESS;
 }
 
-int UPDATE_NEW_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn, int64_t ppn,	int f2fs_block_type)
+int UPDATE_NEW_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn, int64_t ppn,	int block_type)
 {
-    //printf("f2fs_block_type = %d\n", f2fs_block_type);
     int64_t *mapping_table = ssd->mapping_table;
 
-	/* Update Page Mapping Table */
-#ifdef FTL_MAP_CACHE
-	CACHE_UPDATE_PPN(lpn, ppn);
-#else
-	mapping_table[lpn] = ppn;
-    //printf("ppn = %d\n", ppn);
-#endif
-
 	/* Update Inverse Page Mapping Table */
-	UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, ppn), CALC_BLOCK(ssd, ppn), CALC_PAGE(ssd, ppn), VALID);
-	UPDATE_BLOCK_STATE(ssd, CALC_FLASH(ssd, ppn), CALC_BLOCK(ssd, ppn), f2fs_block_type);
-	UPDATE_INVERSE_MAPPING(ssd, ppn, lpn);
+    if(INCREASE_INVERSE_MAPPING(ssd, ppn, lpn) == SUCCESS)
+    {
+    /* Update Page Mapping Table */
+#ifdef FTL_MAP_CACHE
+	    CACHE_UPDATE_PPN(lpn, ppn);
+#else
+	    mapping_table[lpn] = ppn;
+#endif
+        UPDATE_BLOCK_STATE(ssd, CALC_FLASH(ssd, ppn), CALC_BLOCK(ssd, ppn), block_type);
+	    UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, ppn), CALC_BLOCK(ssd, ppn), CALC_PAGE(ssd, ppn), VALID);
+    }
 
 	return SUCCESS;
 }
-
-int UPDATE_NEW_PAGE_MAPPING2(struct ssdstate *ssd, int64_t lpn, int64_t ppn, int f2fs_block_type)
-{
-    //printf("f2fs_block_type = %d\n", f2fs_block_type);
-    int64_t *mapping_table = ssd->mapping_table;
-
-	/* Update Page Mapping Table */
-#ifdef FTL_MAP_CACHE
-	CACHE_UPDATE_PPN(lpn, ppn);
-#else
-	mapping_table[lpn] = ppn;
-    //printf("ppn = %d\n", ppn);
-#endif
-
-	/* Update Inverse Page Mapping Table */
-	UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, ppn), CALC_BLOCK(ssd, ppn), CALC_PAGE(ssd, ppn), PRE_FREE);
-	UPDATE_BLOCK_STATE(ssd, CALC_FLASH(ssd, ppn), CALC_BLOCK(ssd, ppn), f2fs_block_type);
-	UPDATE_INVERSE_MAPPING(ssd, ppn, lpn);
-
-	return SUCCESS;
-}
-
-
-void TRIM_MAPPING_TABLE(struct ssdstate *ssd, int64_t f2fs_old_lpn) {
-	
-
-	int64_t old_ppn;
-
-	old_ppn = GET_MAPPING_INFO(ssd, f2fs_old_lpn);
-
-	if (old_ppn == -1)
-		return;
-
-	UPDATE_OLD_PAGE_MAPPING(ssd, f2fs_old_lpn);		 //hao:更新旧的映射表，将旧的ppn的反向映射表置无效
-
-	ssd->mapping_table[f2fs_old_lpn] = -1;
-
-	return;
-
-}
-
 
 unsigned int CALC_FLASH(struct ssdstate *ssd, int64_t ppn)
 {
@@ -274,8 +225,8 @@ unsigned int CALC_PAGE(struct ssdstate *ssd, int64_t ppn)
 
 
 //add by hao
-void INIT_METADATA_TABLE(struct ssdstate *ssd) {
-
+void INIT_METADATA_TABLE(struct ssdstate *ssd) 
+{
     char *state = NULL;
     struct stat buf;
     size_t res;
@@ -289,9 +240,10 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
     //
 
     ssd->meta_len = ssd->int_meta_size + sc->sos;
-    ssd->meta_tbytes = ssd->meta_len * sc->PAGE_MAPPING_ENTRY_NB; //hao:整个元数据所需要的最大空间
+    ssd->meta_tbytes = ssd->meta_len;
+    // ssd->meta_tbytes = ssd->meta_len * sc->PAGE_MAPPING_ENTRY_NB; //hao:整个元数据所需要的最大空间
+    // printf("Coperd,allocating meta_buf: %d MB\n", ssd->meta_tbytes/1024/1024);
     /* Coperd: we put all the meta data into this buffer */
-    printf("Coperd,allocating meta_buf: %d MB\n", ssd->meta_tbytes/1024/1024);
     ssd->meta_buf = malloc(ssd->meta_tbytes);
     if (!ssd->meta_buf) {
         printf("Coperd, meta buffer allocation failed!\n");
@@ -302,7 +254,6 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
 #ifdef FTL_META_TRANS
 	fp_meta = fopen("./data/meta.txt","a");
 #endif  
-
 
 #if 0                                 //changed by hao: 0--->1
     if (!ssd->meta_fname) {      // Default meta file
@@ -325,8 +276,6 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
         error_report("nvme: femu_oc_init_meta: fopen(%s)\n", ssd->meta_fname);
         return;
     }
-
- 
 
     if (fstat(fileno(ssd->metadata), &buf)) {                //hao:fileno返回metadata对应的文件描述符，并copy到buf
         error_report("nvme: femu_oc_init_meta: fstat(%s)\n", ssd->meta_fname);
@@ -369,182 +318,3 @@ void INIT_METADATA_TABLE(struct ssdstate *ssd) {
 
     return;
  }
-
-
- /*hao
-   fucntion:将元数据写到meta_buf指向的缓存中，单位是sos，
-			并且也写到一个文件中去，可以验证元数据的正确性
-			copy from femu-oc
- 
- */
- int ftl_meta_write(struct ssdstate *ssd, void *meta, struct request_f2fs *request1,  uint64_t i)
- {
- 
-	struct ssdconf *sc = &(ssd->ssdparams);
-
-#if 1
-    struct t10_pi_tuple *t10;               //add by hao
-#endif
- 
- 
-#if 0                                        //hao: for debug
-	 FILE *meta_fp = ssd->metadata;
-	 size_t tgt_oob_len = sc->sos;
-	 size_t ret;
-#endif
-
-	 memcpy(ssd->meta_buf, meta, sc->sos);
-//#ifdef MULTISTREAM
-	 t10 = (struct t10_pi_tuple*) meta;
-
-
-	request1->lpns_info[i].f2fs_ino = t10->f2fs_ino;
-	request1->lpns_info[i].f2fs_off = t10->f2fs_off;
-	request1->lpns_info[i].f2fs_current_lpn = t10->f2fs_new_lba;
-	request1->lpns_info[i].f2fs_temp = t10->f2fs_temp;
-	request1->lpns_info[i].f2fs_type = t10->f2fs_type;
-	request1->lpns_info[i].f2fs_old_lpn = t10->f2fs_old_lba;
-    if(request1->lpns_info[i].f2fs_old_lpn == 4294967295)
-        request1->lpns_info[i].f2fs_old_lpn = (int64_t)(-1);
-    if(request1->lpns_info[i].f2fs_old_lpn >= sc->PAGE_MAPPING_ENTRY_NB || request1->lpns_info[i].f2fs_old_lpn < MAIN_AREA)
-    {
-        request1->lpns_info[i].f2fs_type  = 2;
-        request1->lpns_info[i].f2fs_old_lpn = (int64_t)(-1);
-    }
-    // printf("1request1->lpns_info[i].f2fs_old_lpn = %d\n", request1->lpns_info[i].f2fs_old_lpn);
-    // printf("1request1->lpns_info[i].f2fs_old_lpn = %ld\n", request1->lpns_info[i].f2fs_old_lpn);
-    // printf("1request1->lpns_info[i].f2fs_old_lpn = %lu\n\n", request1->lpns_info[i].f2fs_old_lpn);
-
-    if (t10->f2fs_type != 0 && t10->f2fs_type != 1 && t10->f2fs_type != 2) {
-       request1->lpns_info[i].f2fs_type  = 2;              //hao: metadata type 
-       request1->lpns_info[i].f2fs_old_lpn = (int64_t)(-1);
-    //    printf("2request1->lpns_info[i].f2fs_old_lpn = %d\n", request1->lpns_info[i].f2fs_old_lpn);
-    //    printf("2request1->lpns_info[i].f2fs_old_lpn = %ld\n", request1->lpns_info[i].f2fs_old_lpn);
-    //    printf("2request1->lpns_info[i].f2fs_old_lpn = %lu\n\n", request1->lpns_info[i].f2fs_old_lpn);
-    }
-
-    //printf("hao_debug:bbbbbbbb %d %d\n",t10->f2fs_new_lba, t10->f2fs_old_lba);
-//#endif
-	return 0; 									//add by hao
-
-
-
-#ifdef FTL_META_TRANS
-    t10 = (struct t10_pi_tuple *) meta;      //add by hao
-	fprintf(fp_meta,"%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", 
-                            t10->guard_tag, t10->app_tag, t10->ref_tag,
-                            t10->f2fs_ino, t10->f2fs_off, t10->f2fs_temp, t10->f2fs_type,
-                            t10->f2fs_old_lba, t10->f2fs_new_lba);
-    
- 
-	 return 0;
- #endif
-
-
-#if 0
-	 ret = fwrite(meta, tgt_oob_len, 1, meta_fp);
-	 if (ret != 1) {
-		 perror("femu_oc_meta_write: fwrite");
-		 return -1;
-	 }
- 
-	 if (fflush(meta_fp)) {
-		 perror("femu_oc_meta_write: fflush");
-		 return -1;
-	 }
-    t10 = (struct t10_pi_tuple *) meta;      //add by hao
-	fprintf(fp_meta,"%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", 
-                            t10->guard_tag, t10->app_tag, t10->ref_tag,
-                            t10->f2fs_ino, t10->f2fs_off, t10->f2fs_temp, t10->f2fs_type,
-                            t10->f2fs_old_lba, t10->f2fs_new_lba);
- 
-	 return 0;
-#endif
- }
-
- /*hao
-   function:add by hao
-            get the info of meta attached with lpn
-
- */
-
-int ftl_meta_state_get(struct ssdstate *ssd, uint64_t lpn,
-        uint32_t *state)
-{
-
-	struct ssdconf *sc = &(ssd->ssdparams);	
-
-#if 0
-    FILE *meta_fp = ssd->metadata;
-    size_t tgt_oob_len = sc.sos;
-    size_t int_oob_len = ssd->int_meta_size;
-    size_t meta_len = tgt_oob_len + int_oob_len;
-    size_t ret;
-#endif
-    uint32_t oft = lpn * ssd->meta_len;
-
-    assert(oft + ssd->meta_len <= ssd->meta_tbytes);
-    /* Coperd: only need the internal oob area */
-    memcpy(state, &ssd->meta_buf[oft], ssd->meta_len);
-    //return 0;                                            //add by hao
-
-#if 0
-    if (fseek(meta_fp, seek, SEEK_SET)) {
-        perror("femu_oc_meta_state_get: fseek");
-        printf("Could not seek to offset in metadata file\n");
-        return -1;
-    }
-
-    ret = fread(state, int_oob_len, 1, meta_fp);
-    //printf("Coperd,%s,fread-ret,%d\n", __func__, ret);
-    if (ret != 1) {
-        if (errno == EAGAIN) {
-            //printf("femu_oc_meta_state_get: Why is this not an error?\n");
-            return 0;
-        }
-        perror("femu_oc_meta_state_get: fread");
-        printf("femu_oc_meta_state_get: ppa(%lu), ret(%lu)\n", ppa, ret);
-        return -1;
-    }
-
-    return 0;
-#endif
-}
-		
-void *ftl_meta_index(struct ssdstate *ssd, void *meta, uint32_t index)
-{
-
-	struct ssdconf *sc = &(ssd->ssdparams); 
-
-    return meta + (index * sc->sos);
-}
-
-int ftl_meta_read(struct ssdstate *ssd, void *meta)
-{
-
-struct ssdconf *sc = &(ssd->ssdparams); 
-
-
-#if 0
-    FILE *meta_fp = ln->metadata;
-    size_t tgt_oob_len = ln->params.sos;
-    size_t ret;
-#endif
-
-    memcpy(meta, ssd->meta_buf, sc->sos);
-    return 0;
-
-#if 0
-    ret = fread(meta, tgt_oob_len, 1, meta_fp);
-    if (ret != 1) {
-        if (errno == EAGAIN)
-            return 0;
-        perror("femu_oc_meta_read: fread");
-        return -1;
-    }
-
-    return 0;
-#endif
-}
-
-

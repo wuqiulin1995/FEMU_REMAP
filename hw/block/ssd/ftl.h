@@ -20,9 +20,9 @@ void FTL_INIT(struct ssdstate *ssd);
 void FTL_TERM(struct ssdstate *ssd);
 
 int64_t FTL_READ(struct ssdstate *ssd, int64_t sector_nb, unsigned int length);
-int64_t FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1);
+int64_t FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1);
 
 
 int64_t _FTL_READ(struct ssdstate *ssd, int64_t sector_nb, unsigned int length);
-int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1);
+int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1);
 #endif

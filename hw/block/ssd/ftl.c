@@ -32,6 +32,7 @@
 #include "vssim_config_manager.h"
 
 #include "ftl_bf.h"
+#include "hw/block/nvme.h"
 
 #ifndef VSSIM_BENCH
 //#include "qemu-kvm.h"
@@ -104,10 +105,7 @@ void FTL_INIT(struct ssdstate *ssd)
 
 		INIT_METADATA_TABLE(ssd);
 
-#ifdef WS_COUNT
-		INIT_WS_COUNT(ssd);
-#endif //WS_COUNT
-
+		INIT_STAT_COUNT(ssd);
 		
 #ifdef FTL_MAP_CACHE
 		INIT_CACHE();
@@ -128,7 +126,7 @@ void FTL_INIT(struct ssdstate *ssd)
 #endif
 		SSD_IO_INIT(ssd);
 
-		//printf("[%s] complete\n", __FUNCTION__);
+		printf("[%s] complete\n", __FUNCTION__);
 	}
 }
 
@@ -189,7 +187,7 @@ int64_t FTL_READ(struct ssdstate *ssd, int64_t sector_nb, unsigned int length)
 #endif
 }
 
-int64_t FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
+int64_t FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 {
 	int ret;
 
@@ -262,7 +260,6 @@ int64_t _FTL_READ(struct ssdstate *ssd, int64_t sector_nb, unsigned int length)
     /* Coperd: FTL layer blocked reads statistics */
     ssd->nb_total_reads++;
     ssd->nb_total_rd_sz += length;
-
 
 #ifdef FTL_DEBUG
 	printf("[%s] Start\n", __FUNCTION__);
@@ -369,8 +366,7 @@ int64_t _FTL_READ(struct ssdstate *ssd, int64_t sector_nb, unsigned int length)
 		}
 
 		/* Read data from NAND page */
-                n_io_info = CREATE_NAND_IO_INFO(ssd, read_page_nb, READ, io_page_nb, ssd->io_request_seq_nb);
-
+        n_io_info = CREATE_NAND_IO_INFO(ssd, read_page_nb, READ, io_page_nb, ssd->io_request_seq_nb);
 
         num_flash = CALC_FLASH(ssd, ppn);
         num_blk = CALC_BLOCK(ssd, ppn);
@@ -390,19 +386,13 @@ int64_t _FTL_READ(struct ssdstate *ssd, int64_t sector_nb, unsigned int length)
         }
 
 		cur_need_to_emulate_tt = SSD_PAGE_READ(ssd, num_flash, num_blk, CALC_PAGE(ssd, ppn), n_io_info);
-#ifdef WS_COUNT
-	ssd->ws_temp = get_ts_in_ns();
-	if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
+#ifdef STAT_COUNT
+	ssd->stat_temp = get_ts_in_ns();
+	if(ssd->stat_temp - ssd->stat_time >= 1e9 * PRINT_INTERVAL)
 	{
-		ssd->is_GC = 3;
-		ws_print(ssd);
-		ssd->ws_time = ssd->ws_temp;
-	}
-	ssd->wql_temp = get_ts_in_ns();
-	if(ssd->wql_temp - ssd->wql_time >= 1e9 * PRINT_INTERVAL_WQL)
-	{
-		wql_print(ssd);
-		ssd->wql_time = ssd->wql_temp;
+		ssd->stat_type = 3;
+		stat_print(ssd);
+		ssd->stat_time = ssd->stat_temp;
 	}
 #endif
         if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
@@ -422,7 +412,6 @@ int64_t _FTL_READ(struct ssdstate *ssd, int64_t sector_nb, unsigned int length)
 		lba += read_sects;
 		remain -= read_sects;
 		left_skip = 0;
-
 	}
     //printf("Read, chnl: %d, chip: %d, LAT=%" PRId64 "\n", num_channel, num_flash, max_need_to_emulate_tt);
 
@@ -459,11 +448,8 @@ int64_t _FTL_READ(struct ssdstate *ssd, int64_t sector_nb, unsigned int length)
 	return max_need_to_emulate_tt;
 }
 
-int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
+int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 {
-// #ifdef GC_ON
-// 	GC_CHECK(ssd, 0, 0);
-// #endif
     struct ssdconf *sc = &(ssd->ssdparams);
     int64_t SECTOR_NB = sc->SECTOR_NB;
     int64_t SECTORS_PER_PAGE = sc->SECTORS_PER_PAGE;
@@ -477,8 +463,6 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 
 	unsigned int length;
 	int64_t sector_nb;
-	
-	//printf("hao_debug:_FTL_WRITE\n");
 
 	length = request1->length; 
 	sector_nb = request1->sector_nb;
@@ -535,8 +519,8 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 
 	int64_t lba = sector_nb;
 	int64_t lpn;
-	int64_t new_ppn;
-	int64_t old_ppn;
+	int64_t new_ppn = -1;
+	int64_t old_ppn, old_ppn_xl2p;
 
 	unsigned int remain = length;
 	unsigned int left_skip = sector_nb % SECTORS_PER_PAGE;
@@ -550,16 +534,8 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
     int num_channel = 0, num_flash = 0, num_blk = 0, num_plane = 0;
     int slot;
 
-	int64_t  f2fs_ino;
-	int64_t  f2fs_off;
-	int64_t  f2fs_type;
-	int64_t  f2fs_temp;
-
-	int64_t  f2fs_current_lpn;
-	int64_t  f2fs_old_lpn;
-
-	int64_t  bloom_temp;
-	int      f2fs_block_type;
+	int64_t  h_lpn;
+	uint32_t flag;
 
     /* 
      * Coperd: since the whole I/O submission path is single threaded, it's
@@ -580,55 +556,24 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 
 		write_sects = SECTORS_PER_PAGE - left_skip - right_skip;
 		lpn = lba / (int64_t)SECTORS_PER_PAGE;
-		//add by hao
-#ifdef MULTISTREAM	
+		h_lpn = request1->lpns_info[write_page_nb].h_lpn;
+		flag = request1->lpns_info[write_page_nb].flag;
 
-#ifdef EXT4
-		
-		f2fs_block_type = (lba / BG_SIZE) % TYPE_NUM + TYPE_BASE;
+		if(flag == CP_WRITE)
+		{
+			ssd->stat_cp_write++;
+		}
+		else
+		{
 
-#else //EXT4
-		f2fs_type = request1->lpns_info[write_page_nb].f2fs_type;
-		f2fs_temp = request1->lpns_info[write_page_nb].f2fs_temp;
-		
-		
-		f2fs_ino = request1->lpns_info[write_page_nb].f2fs_ino;
-		f2fs_off = request1->lpns_info[write_page_nb].f2fs_off;
-		f2fs_current_lpn = request1->lpns_info[write_page_nb].f2fs_current_lpn;
-		f2fs_old_lpn = request1->lpns_info[write_page_nb].f2fs_old_lpn;
-		
-		// printf("hao_debug:_FTL_WRITE%d %d %d %d %d %d\n", f2fs_type ,f2fs_temp, f2fs_ino, 
-		// 											f2fs_off, f2fs_current_lpn, f2fs_old_lpn);	
-	
-		if (f2fs_type != 2)
-			bloom_temp = Bloom_filter(ssd, f2fs_ino, f2fs_off);
-		else 
-			bloom_temp = 0;
-
-
-		//printf("hao_debug:_FTL_WRITE %d\n", bloom_temp);
-
-		f2fs_block_type = NEW_BLOCK_TYPE(f2fs_type, f2fs_temp, bloom_temp);
-		//f2fs_block_type = DATA_HOT_COLD_BLOCK;
-#endif	//EXT4
-#else	//MULTISTREAM
-		f2fs_type = request1->lpns_info[write_page_nb].f2fs_type;
-		f2fs_current_lpn = lpn;
-		f2fs_old_lpn = request1->lpns_info[write_page_nb].f2fs_old_lpn;
-		//printf("ftl_write: current %ld, old %ld\n", f2fs_current_lpn, f2fs_old_lpn);
-
-		f2fs_block_type = DATA_BLOCK;
-#endif	//MULTISTREAM	 
-
-		//printf("hao_debug:_FTL_WRITE f2fs_block_type %d\n", f2fs_block_type);
 #ifdef FIRM_IO_BUFFER
 		INCREASE_WB_FTL_POINTER(write_sects);
 #endif
-		//printf("hao_debug:_FTL_WRITEaaaaaaaaaaaaaaaaaaaaaa %d\n", bloom_temp);
+
 #ifdef WRITE_NOPARAL
-		ret = GET_NEW_PAGE(VICTIM_NOPARAL, empty_block_table_index, &new_ppn, f2fs_block_type);
+		ret = GET_NEW_PAGE(VICTIM_NOPARAL, empty_block_table_index, &new_ppn);
 #else
-		ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, f2fs_block_type);
+		ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn);
 #endif
 
 		if(ret == FAIL){
@@ -636,24 +581,8 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 			return FAIL;
 		}
 
-		if(f2fs_old_lpn == -1 || f2fs_type == 2 || f2fs_current_lpn < MAIN_AREA)
-		{
-			if(f2fs_old_lpn == -1)
-				ssd->ws_newpage++;
-		}
-		else if(f2fs_old_lpn == f2fs_current_lpn)
-		{
-			ssd->ws_old_new_e++;	//IPU
-		}
-		else
-		{
-			ssd->ws_old_new_ne++;	//LFS
-		}
-
-		//printf("hao_debug:_FTL_WRITEbbbbbbbbbbbbbbbbbbbbbb %d\n", bloom_temp);
-
 		old_ppn = GET_MAPPING_INFO(ssd, lpn);
-		//printf("hao_debug:_FTL_WRITE lpn old_ppn %d %d\n",lpn, old_ppn);
+		//printf("hao_debug:_FTL_WRITE lpn = %d, old_ppn = %d\n", lpn, old_ppn);
 		n_io_info = CREATE_NAND_IO_INFO(ssd, write_page_nb, WRITE, io_page_nb, ssd->io_request_seq_nb);
 
         num_flash = CALC_FLASH(ssd, new_ppn);
@@ -673,43 +602,90 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
             blocking_to = gc_slot[slot];
         }
 
-
 		if((left_skip || right_skip) && (old_ppn != -1)){
 			cur_need_to_emulate_tt = SSD_PAGE_PARTIAL_WRITE(ssd,
 				CALC_FLASH(ssd, old_ppn), CALC_BLOCK(ssd, old_ppn), CALC_PAGE(ssd, old_ppn),
 				CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn),
 				n_io_info);
-			printf("***************************SSD_PAGE_PARTIAL_WRITE\n");
+			printf("---------------SSD_PAGE_PARTIAL_WRITE-----------------\n");
 		}
 		else{
 			cur_need_to_emulate_tt = SSD_PAGE_WRITE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), n_io_info);
 		}
-#ifdef WS_COUNT
-	ssd->ws_temp = get_ts_in_ns();
-	if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
+#ifdef STAT_COUNT
+	ssd->stat_temp = get_ts_in_ns();
+	ssd->stat_host_write_count++;
+	if(ssd->stat_temp - ssd->stat_time >= 1e9 * PRINT_INTERVAL)
 	{
-		ssd->is_GC = 3;
-		ws_print(ssd);
-		ssd->ws_time = ssd->ws_temp;
-	}
-	ssd->wql_temp = get_ts_in_ns();
-	if(ssd->wql_temp - ssd->wql_time >= 1e9 * PRINT_INTERVAL_WQL)
-	{
-		wql_print(ssd);
-		ssd->wql_time = ssd->wql_temp;
+		ssd->stat_type = 3;
+		stat_print(ssd);
+		ssd->stat_time = ssd->stat_temp;
 	}
 #endif
         if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
             max_need_to_emulate_tt = cur_need_to_emulate_tt;
         }
 
-		write_page_nb++;
-		//printf("hao_debug:_FTL_WRITE new_ppn %d\n", new_ppn);
         //printf("FTL-WRITE: lpn -> ppn: %"PRId64" -> %"PRId64"\n", lpn, new_ppn);
 		
 		UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
-		UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, f2fs_block_type);
-		//printf("hao_debug:_FTL_WRITE xxxxxxxxxxxxxx %d\n", write_page_nb);
+		UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, DATA_BLOCK);
+
+		// write_debug_print(ssd, lpn, new_ppn, old_ppn);
+
+		if(flag == WAL_WRITE || flag == WAL_WRITE+1)
+		{
+			if(h_lpn > 0)
+			{
+				// printf("WRITE REMAP -- dst_lpn = %ld, h_lpn = %ld, commit = %d, new_ppn = %lld\n", lpn, h_lpn, flag == WAL_WRITE+1? 1:0, new_ppn);
+			
+				int64_t *mapping_table = ssd->mapping_table;
+				if(INCREASE_INVERSE_MAPPING(ssd, new_ppn, h_lpn) == SUCCESS)
+				{
+					// write_remap_print(ssd, write_page_nb, lpn, h_lpn);
+
+					UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), VALID);
+
+					UPDATE_OLD_PAGE_MAPPING(ssd, h_lpn);
+					mapping_table[h_lpn] = new_ppn;
+
+					// UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
+					// mapping_table[lpn] = -1;
+
+					ssd->stat_remap_cnt++;
+				}
+			}
+
+			if(flag == WAL_WRITE+1)  //commit
+			{
+				ssd->stat_commit_cnt++;
+#ifdef X_FTL
+				ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn);
+				if(ret == FAIL)
+				{
+					printf("ERROR[%s] Get new page fail xl2p \n", __FUNCTION__);
+					return FAIL;
+				}
+				old_ppn_xl2p = ssd->xl2p_ppn;
+
+				cur_need_to_emulate_tt = SSD_PAGE_WRITE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), n_io_info);
+				if (cur_need_to_emulate_tt > max_need_to_emulate_tt) 
+				{
+					max_need_to_emulate_tt = cur_need_to_emulate_tt;
+				}
+
+				if(old_ppn_xl2p != -1)
+				{
+					UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, old_ppn_xl2p), CALC_BLOCK(ssd, old_ppn_xl2p), CALC_PAGE(ssd, old_ppn_xl2p), INVALID);
+				}
+
+				ssd->xl2p_ppn = new_ppn;
+				UPDATE_BLOCK_STATE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), DATA_BLOCK);
+	    		UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), VALID);
+#endif
+			}
+		}
+
 #ifdef FTL_DEBUG
                 if(ret == SUCCESS){
                         printf("\twrite complete [%d, %d, %d]\n",CALC_FLASH(new_ppn), CALC_BLOCK(new_ppn),CALC_PAGE(new_ppn));
@@ -718,39 +694,12 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
                         printf("ERROR[%s] %d page write fail \n",__FUNCTION__, new_ppn);
                 }
 #endif
+		} // flag != CP_WRITE
 
-#ifdef MULTISTREAM
-        // if(f2fs_old_lpn != -1 && f2fs_type != 2) {
-		// 	//printf("hao_debug:_FTL_WRITE yyyyyyy %d %d\n", f2fs_old_lpn, f2fs_type);
-		// 	//TRIM_MAPPING_TABLE(ssd, f2fs_old_lpn);	//add by hao: Immediate invalidation
-		// 	//printf("hao_debug:_FTL_WRITE yyyyyyy %d\n", f2fs_old_lpn);
-		// }
-		if(f2fs_old_lpn != -1 && f2fs_type != 2 && f2fs_current_lpn >= MAIN_AREA && (f2fs_old_lpn != f2fs_current_lpn)) {
-			// printf("f2fs_type = %ld\n", f2fs_type);
-			// printf("f2fs_old_lpn = %ld, f2fs_current_lpn = %ld\n", f2fs_old_lpn, f2fs_current_lpn);
-			int64_t f2fs_old_ppn = GET_MAPPING_INFO(ssd, f2fs_old_lpn);
-			/* Update Old Block State to PRE_FREE */
-			if(f2fs_old_ppn != (int64_t)(-1))
-				UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, f2fs_old_ppn), 
-					CALC_BLOCK(ssd, f2fs_old_ppn), CALC_PAGE(ssd, f2fs_old_ppn), PRE_FREE);
-		}
-#else
-		if(f2fs_old_lpn != -1 && f2fs_type != 2 && f2fs_current_lpn >= MAIN_AREA && (f2fs_old_lpn != f2fs_current_lpn)) {
-			// printf("f2fs_type = %ld\n", f2fs_type);
-			// printf("f2fs_old_lpn = %ld, f2fs_current_lpn = %ld\n", f2fs_old_lpn, f2fs_current_lpn);
-			int64_t f2fs_old_ppn = GET_MAPPING_INFO(ssd, f2fs_old_lpn);
-			/* Update Old Block State to PRE_FREE */
-			if(f2fs_old_ppn != (int64_t)(-1))
-				UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, f2fs_old_ppn),CALC_BLOCK(ssd, f2fs_old_ppn), CALC_PAGE(ssd, f2fs_old_ppn), PRE_FREE);
-				// UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, f2fs_old_ppn), 
-				// 	CALC_BLOCK(ssd, f2fs_old_ppn), CALC_PAGE(ssd, f2fs_old_ppn), PRE_FREE);
-		}
-#endif
-
+		write_page_nb++;
 		lba += write_sects;
 		remain -= write_sects;
 		left_skip = 0;
-		//printf("hao_debug:_FTL_WRITE remain %d\n", remain);
 	}
 
     if (blocking_to > curtime) {
@@ -760,7 +709,8 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 
 	INCREASE_IO_REQUEST_SEQ_NB(ssd);
 #ifdef GC_ON
-	GC_CHECK(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn));
+	if(new_ppn > 0)
+		GC_CHECK(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn));
 #endif
 
 #ifdef FIRM_IO_BUFFER
@@ -780,93 +730,3 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_f2fs *request1)
 #endif
 	return max_need_to_emulate_tt; 
 }
-#ifndef EXT4
-int NEW_BLOCK_TYPE(uint64_t f2fs_type, uint64_t f2fs_temp, uint64_t bloom_temp) {
-
-int block_type = EMPTY_BLOCK;
-
-if (f2fs_type == 2) 		//metedata
-{
-	block_type = METADATA_BLOCK;
-}
-else if (f2fs_type == 1)		    //node				
-{
-	if (f2fs_temp == 0) 				   // f2fs 语义 hot
-	{ 
-		if (bloom_temp == 0)              //hao        
-		{
-			block_type = NODE_HOT_HOT_BLOCK;
-		}
-		else if (bloom_temp == 1)
-		{
-			block_type = NODE_HOT_COLD_BLOCK;
-		}
-	}
-	else if (f2fs_temp == 1)			   // f2fs 语义   warm
-	{
-		if (bloom_temp == 0)
-		{
-			block_type = NODE_WARM_HOT_BLOCK; 
-		}
-		else if (bloom_temp == 1)
-		{
-			block_type = NODE_WARM_COLD_BLOCK; 
-		}
-	}
-	else if (f2fs_temp == 2)			 // f2fs 语义  cold
-	{
-		if (bloom_temp == 0)
-		{
-			block_type = NODE_COLD_HOT_BLOCK; 
-		}
-		else if (bloom_temp == 1)
-		{
-			block_type = NODE_COLD_COLD_BLOCK; 
-		}
-	}	
-
-}
-else if (f2fs_type == 0)		           //data				
-{
-	if (f2fs_temp == 0) 				   // f2fs 语义
-	{ 
-		if (bloom_temp == 0)
-		{
-			block_type = DATA_HOT_HOT_BLOCK; 	
-		}
-		else if (bloom_temp == 1)
-		{
-			block_type = DATA_HOT_COLD_BLOCK; 		
-		}
-	}
-	else if (f2fs_temp == 1)			   // f2fs 语义
-	{
-		if (bloom_temp == 0)
-		{
-			block_type = DATA_WARM_HOT_BLOCK;
-			
-		}
-		else if (bloom_temp == 1)
-		{
-			block_type = DATA_WARM_COLD_BLOCK;			
-		}
-	}
-	else if (f2fs_temp == 2)			 // f2fs 语义
-	{
-		if (bloom_temp == 0)
-		{
-			block_type = DATA_COLD_HOT_BLOCK;
-			
-		}
-		else if (bloom_temp == 1)
-		{
-			block_type = DATA_COLD_COLD_BLOCK;			
-		}
-	}	
-
-}
-return block_type;
-
-
-}
-#endif //EXT4

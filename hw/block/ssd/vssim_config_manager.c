@@ -9,247 +9,167 @@
 #include <assert.h>
 #include "god.h"
 
-#ifdef WS_COUNT
-void INIT_WS_COUNT(struct ssdstate *ssd)
+void INIT_STAT_COUNT(struct ssdstate *ssd)
 {
 	struct ssdconf *sc = &(ssd->ssdparams);
-	ssd->is_GC=0;
-    ssd->ws_gc_count=0;
-    ssd->ws_erase_count=0;
+
+	ssd->stat_type=0;
+
+	ssd->stat_time=0;
+	ssd->stat_temp=0;
+
+    ssd->stat_total_read_count=0;
+    ssd->stat_total_write_count=0;
+	ssd->stat_host_write_count=0;
+
 	ssd->gc_count = 0;
-    
-    ssd->ws_total_read_count=0;
-    ssd->ws_total_write_count=0;
-    
+    ssd->stat_gc_count=0;
+    ssd->stat_erase_count=0;
 
-    ssd->ws_gc_read_count=0;
-    ssd->ws_gc_write_count=0;
+    ssd->stat_gc_write_count=0;
+    ssd->stat_gc_remap_write=0;
+	ssd->stat_remap_cnt=0;
+	ssd->stat_commit_cnt=0;
+	ssd->stat_cp_write=0;
 
-	ssd->ws_time=0;
-	ssd->ws_temp=0;
+	ssd->stat_ppn_valid=0;
+	ssd->stat_ppn_n21=0;
+	ssd->stat_ppn_invalid=0;
+	ssd->stat_ppn_free=sc->PAGE_MAPPING_ENTRY_NB;
 
-	ssd->wql_temp = 0;
-	ssd->wql_time = 0;
+	ssd->stat_lpn_valid=0;
 
-	ssd->ws_old_new_e=0;   //old lpn == new lpn
-    ssd->ws_old_new_ne=0;  //old lpn != new lpn
-    ssd->ws_user_page_write_between_trim=0;
-    ssd->ws_gc_page_write_between_trim=0;
-	ssd->ws_gc_old_lpn_count=0;
-
-	ssd->ws_ppa_valid=0;
-	ssd->ws_ppa_invalid=0;
-	ssd->ws_ppa_pre_free=0;
-	ssd->ws_ppa_free=sc->BLOCK_MAPPING_ENTRY_NB*sc->PAGE_NB;
-    ssd->ws_newpage=0;
-
-	FILE *fout = NULL; 
-	fout = fopen(OUTPUT_FILENAME, "w");
+#ifdef STAT_COUNT
+	FILE *fout = NULL;
+	fout = fopen(STAT_OUTPUT_FILE, "w");
 	if(fout == NULL)
 	{
 		printf("Error: Output file open error\n");
 		getchar();
 	}
-	fprintf(fout, "is_gc, GC迁移的页总数量, GC擦除的块数, GC迁移的old页, GC写入数据量(页), 用户写入数据量(页),  write_new_page ,old_lpn==new_lpn, old_lpn!=new_lpn, valid_page, \\
-invalid_page, prefree_page, freepage, \n");
+	fprintf(fout, "stat_type, total page read, total page write, host page write, gc count, \\
+	erase block, gc write,  gc remap cnt, remap cnt, commit cnt, ioctl cp, ppn valid, ppn n21, \\
+	ppn invalid, ppn free, lpn vallid, \n");
 	fclose(fout);
+#endif //STAT_COUNT
+
     return;
 }
 
-void wql_print(struct ssdstate *ssd)
+void metadata_print(struct ssdstate *ssd, int32_t i, uint32_t tx_id, uint32_t flag, int64_t h_lpn)
 {
-	struct ssdconf *sc = &(ssd->ssdparams);
-    int FLASH_NB = sc->FLASH_NB;
-    int BLOCK_NB = sc->BLOCK_NB;
-    int PAGE_NB = sc->PAGE_NB;
-    int VICTIM_TABLE_ENTRY_NB = sc->VICTIM_TABLE_ENTRY_NB;
-	int SB_BLK_NB = sc->FLASH_NB * sc->PLANES_PER_FLASH;
-
-    victim_block_root *victim_block_list = (victim_block_root *)ssd->victim_block_list;
-
-	int i, j;
-	int entry_nb = 0;
-	
-	int entry_nb1=0;
-	int k, off = 0;
-	unsigned int first_block_nb;
-
 	FILE *fout = NULL; 
-
-	victim_block_root* curr_v_b_root;
-	victim_block_entry* curr_v_b_entry;
-	victim_block_entry* victim_block[SB_BLK_NB]; //  WQL:assume plane_per_flash = 1
-
-	block_state_entry* b_s_entry;
-	int curr_valid_page_nb = 0, curr_prefree_page_nb = 0;
-	int min_valid_page_nb = PAGE_NB * FLASH_NB * sc->PLANES_PER_FLASH;
-	if(ssd->total_victim_block_nb == 0)
-	{
-		printf("ERROR[%s] There is no victim block--1\n", __FUNCTION__);
-		return FAIL;
-	}
-
-	curr_v_b_root = victim_block_list;
-
-	if(curr_v_b_root->victim_block_nb != 0)
-	{	
-		entry_nb = curr_v_b_root->victim_block_nb;
-		curr_v_b_entry = curr_v_b_root->head;
-	}
-	else
-	{
-		entry_nb = 0;
-		printf("ERROR[%s] There is no victim superblock--2\n", __FUNCTION__);
-		return FAIL;
-	}
-
-	curr_v_b_root = victim_block_list;
-
-	fout = fopen(SB_PRE_FILENAME, "w");
+	fout = fopen("/home/b507/metadata.csv", "a");
 	if(fout == NULL)
 	{
-		printf("Error: Output file open error\n");
+		printf("Error: metadata file open error\n");
 		getchar();
 	}
-	fprintf(fout, "SB count, prefree page nb in SB, total prefree page nb,\n");
 
-	for(i=0;i<entry_nb;i++)
-	{
-		curr_valid_page_nb = 0; 
-		curr_prefree_page_nb = 0;
-		
-		for(j=0;j<VICTIM_TABLE_ENTRY_NB;j++)
-		{
-			curr_v_b_root = victim_block_list + j;
-			if(i==0)
-			{
-				entry_nb1 = curr_v_b_root->victim_block_nb;
-				if(entry_nb1!=entry_nb)
-				{
-					printf("ERROR[%s] Victim block count error\n", __FUNCTION__);
-					return FAIL;
-				}
-			}
-
-			curr_v_b_entry = curr_v_b_root->head;
-			for(k=0;k<i;k++)
-			{
-				curr_v_b_entry = curr_v_b_entry->next;
-			}
-
-			if(j==0)
-			{
-				first_block_nb = curr_v_b_entry->phy_block_nb;
-			}
-
-			if(curr_v_b_entry->phy_block_nb != first_block_nb)
-			{
-				printf("ERROR[%s] Victim block offset error\n", __FUNCTION__);
-				return FAIL;
-			}
-			
-			b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, curr_v_b_entry->phy_flash_nb, curr_v_b_entry->phy_block_nb);
-			curr_valid_page_nb += b_s_entry->valid_page_nb;
-			curr_prefree_page_nb += b_s_entry->prefree_page_nb;
-		}
-		fprintf(fout, "%d, %d, %d,\n", i, curr_prefree_page_nb, ssd->ws_ppa_pre_free);
-	}
+	fprintf(fout, "%d, %u, %u, %ld\n", i, tx_id, flag, h_lpn);
 	
-
 	fflush(fout);
 	fclose(fout);
+
 	return;
 }
 
-void ws_print(struct ssdstate *ssd)
+void write_debug_print(struct ssdstate *ssd, int64_t lpn, int64_t new_ppn, int64_t old_ppn)
 {
-	//FILE *OUTPOU_FILE 
-    /*printf("\n");
-    printf("ssd->ws_total_read_count = %d\n", ssd->ws_total_read_count);
-    printf("ssd->ws_total_write_count = %d\n", ssd->ws_total_write_count);
-    printf("ssd->ws_gc_read_count = %d\n", ssd->ws_gc_read_count);
-    printf("ssd->ws_gc_write_count = %d\n", ssd->ws_gc_write_count);
-    printf("ssd->ws_erase_count = %d\n", ssd->ws_erase_count);
-    printf("\n");*/
 	FILE *fout = NULL; 
-	fout = fopen(OUTPUT_FILENAME, "a");
+	fout = fopen("/home/b507/write_debug.csv", "a");
+	if(fout == NULL)
+	{
+		printf("Error: write debug file open error\n");
+		getchar();
+	}
+
+	fprintf(fout, "%ld, %ld, %ld, \n", lpn, new_ppn, old_ppn);
+	
+	fflush(fout);
+	fclose(fout);
+
+	return;
+}
+
+void write_remap_print(struct ssdstate *ssd, int32_t i, int64_t dst_lpn, int64_t h_lpn)
+{
+	FILE *fout = NULL; 
+	fout = fopen("/home/b507/write_remap.csv", "a");
+	if(fout == NULL)
+	{
+		printf("Error: write remap file open error\n");
+		getchar();
+	}
+
+	fprintf(fout, "%d, %ld, %ld, \n", i, dst_lpn, h_lpn);
+	
+	fflush(fout);
+	fclose(fout);
+
+	return;
+}
+
+void decrease_debug_print(struct ssdstate *ssd, int64_t ppn, int64_t lpn, int32_t lpn_cnt)
+{
+	FILE *fout = NULL; 
+	fout = fopen("/home/b507/decrease_debug.csv", "a");
+	if(fout == NULL)
+	{
+		printf("Error: decrease debug file open error\n");
+		getchar();
+	}
+
+	fprintf(fout, "%ld, %ld, \n", ppn, lpn, lpn_cnt);
+	
+	fflush(fout);
+	fclose(fout);
+
+	return;
+}
+
+void increase_debug_print(struct ssdstate *ssd, int64_t ppn, int64_t lpn, int32_t lpn_cnt)
+{
+	FILE *fout = NULL; 
+	fout = fopen("/home/b507/increase_debug.csv", "a");
+	if(fout == NULL)
+	{
+		printf("Error: increase debug file open error\n");
+		getchar();
+	}
+
+	fprintf(fout, "%ld, %ld, %d\n", ppn, lpn, lpn_cnt);
+	
+	fflush(fout);
+	fclose(fout);
+
+	return;
+}
+
+void stat_print(struct ssdstate *ssd)
+{
+	FILE *fout = NULL; 
+	fout = fopen(STAT_OUTPUT_FILE, "a");
 	if(fout == NULL)
 	{
 		printf("Error: Output file open error\n");
 		getchar();
 	}
 
-	fprintf(fout, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d,\n", ssd->is_GC, ssd->ws_gc_write_count,
-		ssd->ws_erase_count, 
-		ssd->ws_gc_old_lpn_count, ssd->ws_gc_page_write_between_trim, ssd->ws_user_page_write_between_trim,
-		ssd->ws_newpage, ssd->ws_old_new_e, ssd->ws_old_new_ne, 
-		ssd->ws_ppa_valid, ssd->ws_ppa_invalid, ssd->ws_ppa_pre_free, ssd->ws_ppa_free);
+	fprintf(fout, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %lu, %lu, %lu, %lu, %lu, \n", 
+		ssd->stat_type, ssd->stat_total_read_count, ssd->stat_total_write_count, ssd->stat_host_write_count,
+		ssd->stat_gc_count, ssd->stat_erase_count, ssd->stat_gc_write_count,
+		ssd->stat_gc_remap_write, ssd->stat_remap_cnt, ssd->stat_commit_cnt, ssd->stat_cp_write, 
+		ssd->stat_ppn_valid, ssd->stat_ppn_n21, ssd->stat_ppn_invalid, 
+		ssd->stat_ppn_free, ssd->stat_lpn_valid);
 	
 	fflush(fout);
-	//fprintf(fout, "GC迁移的页总数量, GC迁移的old页, 用户写入数据量(页), GC写入数据量(页), old lpn==new lpn, old lpn!=new lpn,\n");
 	fclose(fout);
 	
-	ssd->is_GC=0;
-	ssd->ws_gc_write_count=0;
-	ssd->ws_erase_count=0;
-	 
-	ssd->ws_gc_old_lpn_count=0;
-	ssd->ws_gc_page_write_between_trim=0;
-	ssd->ws_user_page_write_between_trim=0;
-	
-	ssd->ws_newpage=0;
-	ssd->ws_old_new_e=0;
-	ssd->ws_old_new_ne=0;
+	ssd->stat_type=0;
 
 	return;
 }
-
-// void ws_print_lba(struct ssdstate *ssd)
-// {
-// 	FILE *fout = NULL; 
-// 	fout = fopen(OUTPUT_FILENAME, "a");
-// 	if(fout == NULL)
-// 	{
-// 		printf("Error: Output file open error\n");
-// 		getchar();
-// 	}
-// 	int ws_ppa_valid=0;
-//     int ws_ppa_invalid=0;
-//     int ws_ppa_pre_free=0;
-
-// 	struct ssdconf *sc = &(ssd->ssdparams);
-// 	int FLASH_NB = sc->FLASH_NB;
-//     int BLOCK_NB = sc->BLOCK_NB;
-//     int PAGE_NB = sc->PAGE_NB;
-
-// 	block_state_entry* b_s_entry;
-// 	char* valid_array;
-
-// 	int i, j, k;
-// 	for(i=0; i<FLASH_NB; i++)
-// 	{
-// 		for(j=0; j<BLOCK_NB; j++)
-// 		{
-// 			b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, i, j);
-// 			valid_array = b_s_entry->valid_array;
-// 			for(k=0; k<PAGE_NB; k++)
-// 			{
-// 				if(valid_array[k]=='V')
-// 					ws_ppa_valid++;
-// 				else if(valid_array[k]=='I')
-// 					ws_ppa_invalid++;
-// 				else if(valid_array[k]=='P')
-// 					ws_ppa_pre_free++;
-// 			}
-// 		}
-// 	}
-
-	
-// 	fflush(fout);
-// 	fclose(fout);
-// 	return;
-// }
-#endif //WS_COUNT
 
 void INIT_SSD_CONFIG(struct ssdstate *ssd)
 {
@@ -258,8 +178,6 @@ void INIT_SSD_CONFIG(struct ssdstate *ssd)
 
 	unsigned int p1, q;                      //add by hao
 
-
-
 	pfData = fopen(ssd->conffile, "r");
 	
 	char* szCommand = NULL;
@@ -267,7 +185,7 @@ void INIT_SSD_CONFIG(struct ssdstate *ssd)
 	szCommand = (char*)malloc(1024);
 	memset(szCommand, 0x00, 1024);
 
-	sc->sos = 32;                            //add by hao
+	sc->sos = PI_BYTES_NVME;                            //add by hao
 	sc->max_page = 0;
 	ssd->block_cnt = 0;
 	ssd->data_buffer_counter = 0;

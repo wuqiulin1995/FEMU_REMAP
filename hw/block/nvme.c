@@ -172,7 +172,9 @@
 extern void SSD_INIT(struct ssdstate *ssd);
 
 extern int64_t SSD_READ(struct ssdstate *ssd, unsigned int length, int64_t sector_nb);
-extern int64_t SSD_WRITE(struct ssdstate *ssd, struct request_f2fs *request1);
+extern int64_t SSD_WRITE(struct ssdstate *ssd, struct request_meta *request1);
+extern int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t len, uint32_t ope);
+extern int femu_discard_process(struct ssdstate *ssd, uint32_t length, int64_t sector_nb);
 extern void femu_oc_exit(NvmeCtrl *n);
 extern int femu_oc_init(NvmeCtrl *n);
 extern int femu_oc_flush_tbls(NvmeCtrl *n);
@@ -985,6 +987,174 @@ uint16_t nvme_rw_check_req(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     return 0;
 }
 
+void femu_txw_memcpy(NvmeCtrl *n, struct request_meta *request1)
+{
+    void *hs = n->heap_storage;
+    struct ssdstate *ssd = &(n->ssd);
+	int PAGE_SIZE = ssd->ssdparams.PAGE_SIZE;
+    int SECTORS_PER_PAGE = ssd->ssdparams.SECTORS_PER_PAGE;
+    unsigned int remain = request1->length;
+    int64_t lba = request1->sector_nb;
+    int write_page_nb = 0;
+    int64_t  lpn, h_lpn;
+	uint32_t  flag;
+    
+    while(remain > 0)
+    {
+        lpn = lba / (int64_t)SECTORS_PER_PAGE;
+		h_lpn = request1->lpns_info[write_page_nb].h_lpn;
+		flag = request1->lpns_info[write_page_nb].flag;
+
+        if((flag == WAL_WRITE || flag == WAL_WRITE+1) && h_lpn > 0)
+		{
+            memcpy(hs + (h_lpn * PAGE_SIZE), hs + (lpn * PAGE_SIZE), PAGE_SIZE);
+        }
+
+        write_page_nb++;
+        lba += SECTORS_PER_PAGE;
+		remain -= SECTORS_PER_PAGE;
+    }
+    return;
+}
+
+/*hao
+   fucntion:将元数据写到meta_buf指向的缓存中，单位是sos，
+			并且也写到一个文件中去，可以验证元数据的正确性
+			copy from femu-oc
+ */
+int ftl_meta_write(struct ssdstate *ssd, void *meta, struct request_meta *request1,  uint64_t i)
+{
+	struct ssdconf *sc = &(ssd->ssdparams);
+
+#if 1
+    struct t10_pi_tuple *t10;               //add by hao
+#endif
+ 
+#if 0                                        //hao: for debug
+	 FILE *meta_fp = ssd->metadata;
+	 size_t tgt_oob_len = sc->sos;
+	 size_t ret;
+#endif
+
+	memcpy(ssd->meta_buf, meta, sc->sos);
+	t10 = (struct t10_pi_tuple*) meta;
+
+	request1->lpns_info[i].h_lpn = be64_to_cpu(t10->h_lpn);
+    request1->lpns_info[i].tx_id = be32_to_cpu(t10->tx_id);
+    request1->lpns_info[i].flag = be32_to_cpu(t10->flag);
+
+    // if(request1->lpns_info[i].flag != 0)
+    // {
+    //     metadata_print(ssd, i, request1->lpns_info[i].tx_id, request1->lpns_info[i].flag, request1->lpns_info[i].h_lpn);
+    // }
+
+    if((request1->lpns_info[i].flag != WAL_WRITE && request1->lpns_info[i].flag != WAL_WRITE+1 && request1->lpns_info[i].flag != CP_WRITE) || request1->lpns_info[i].h_lpn >= sc->PAGE_MAPPING_ENTRY_NB)
+    {
+        request1->lpns_info[i].tx_id = 0;
+        request1->lpns_info[i].flag = 0;
+        request1->lpns_info[i].h_lpn = (int64_t)(-1);
+    }
+	return 0;
+
+#if 0
+    ret = fwrite(meta, tgt_oob_len, 1, meta_fp);
+    if (ret != 1) {
+        perror("femu_oc_meta_write: fwrite");
+        return -1;
+    }
+
+    if (fflush(meta_fp)) {
+        perror("femu_oc_meta_write: fflush");
+        return -1;
+    }
+    t10 = (struct t10_pi_tuple *) meta;      //add by hao 
+	return 0;
+#endif
+}
+
+#if 0
+/*hao
+   function:add by hao
+            get the info of meta attached with lpn
+
+*/
+int ftl_meta_state_get(struct ssdstate *ssd, uint64_t lpn, uint32_t *state)
+{
+
+	struct ssdconf *sc = &(ssd->ssdparams);	
+
+#if 0
+    FILE *meta_fp = ssd->metadata;
+    size_t tgt_oob_len = sc.sos;
+    size_t int_oob_len = ssd->int_meta_size;
+    size_t meta_len = tgt_oob_len + int_oob_len;
+    size_t ret;
+#endif
+    uint32_t oft = lpn * ssd->meta_len;
+
+    assert(oft + ssd->meta_len <= ssd->meta_tbytes);
+    /* Coperd: only need the internal oob area */
+    memcpy(state, &ssd->meta_buf[oft], ssd->meta_len);
+    //return 0;                                            //add by hao
+
+#if 0
+    if (fseek(meta_fp, seek, SEEK_SET)) {
+        perror("femu_oc_meta_state_get: fseek");
+        printf("Could not seek to offset in metadata file\n");
+        return -1;
+    }
+
+    ret = fread(state, int_oob_len, 1, meta_fp);
+    //printf("Coperd,%s,fread-ret,%d\n", __func__, ret);
+    if (ret != 1) {
+        if (errno == EAGAIN) {
+            //printf("femu_oc_meta_state_get: Why is this not an error?\n");
+            return 0;
+        }
+        perror("femu_oc_meta_state_get: fread");
+        printf("femu_oc_meta_state_get: ppa(%lu), ret(%lu)\n", ppa, ret);
+        return -1;
+    }
+
+    return 0;
+#endif
+}
+#endif
+		
+void *ftl_meta_index(struct ssdstate *ssd, void *meta, uint32_t index)
+{
+	struct ssdconf *sc = &(ssd->ssdparams); 
+
+    return meta + (index * sc->sos);
+}
+
+int ftl_meta_read(struct ssdstate *ssd, void *meta)
+{
+
+struct ssdconf *sc = &(ssd->ssdparams); 
+
+#if 0
+    FILE *meta_fp = ln->metadata;
+    size_t tgt_oob_len = ln->params.sos;
+    size_t ret;
+#endif
+
+    memcpy(meta, ssd->meta_buf, sc->sos);
+    return 0;
+
+#if 0
+    ret = fread(meta, tgt_oob_len, 1, meta_fp);
+    if (ret != 1) {
+        if (errno == EAGAIN)
+            return 0;
+        perror("femu_oc_meta_read: fread");
+        return -1;
+    }
+
+    return 0;
+#endif
+}
+
 static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     NvmeRequest *req)
 {
@@ -1015,31 +1185,27 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     struct ssdconf *sc = &(ssd->ssdparams);
     uint32_t n_pages = data_size / 4096;
 
-    struct request_f2fs *request1;           //add by hao
+    struct request_meta *request1;           //add by hao
 
-   	request1 = (struct request_f2fs*)malloc(sizeof(struct request_f2fs)); 
-	memset(request1, 0, sizeof(struct request_f2fs));
+   	request1 = (struct request_meta*)malloc(sizeof(struct request_meta)); 
+	memset(request1, 0, sizeof(struct request_meta));
     req->data_offset = data_offset;
     req->is_write = (rw->opcode == NVME_CMD_WRITE) ? 1 : 0;
 
     is_write = (rw->opcode == NVME_CMD_WRITE) ? 1 : 0;
-    //printf("hao: nvme_rw %d\n",is_write);
 
-    msl = g_malloc0(sc->sos * 512);   //hao:�?for metadata alloc space, assume a request max contain 256 pages
+    msl = g_malloc0(sc->sos * 512);   //hao: metadata alloc space, assume a request max contain 512 pages
     if (!msl) {
         printf("femu_oc_rw: ENOMEM\n");
         return -ENOMEM;
     }
 
     //printf("hao: nvme_rw_check %d %d %d %d %d\n", slba, elba, nlb, data_size, meta_size);
-    err = nvme_rw_check_req(n, ns, cmd, req, slba, elba, nlb, ctrl, data_size,
-            0);
+    err = nvme_rw_check_req(n, ns, cmd, req, slba, elba, nlb, ctrl, data_size, 0);
     if (err) {
         printf("femu_oc_rw: failed nvme_rw_check\n");
         goto fail_free_msl;
     }
-
-
 
 #if 0                  //hao:verify the max page numbers
 
@@ -1050,36 +1216,20 @@ if (n_pages > sc->max_page) {
 
 #endif
 
-
-    /*hao
-	*/
-
-    // if (meta) {
-    //     printf("hao:test meta pointer\n");
-    // }
-	// if (!meta) {
-    //     printf("hao:test meta pointerxxxxxxxxx\n");
-    // }
-
-
-    //printf("hao_page_number:%lu\n", n_pages);
 #if 1                          //support meta or not support meta
     if (meta && is_write) {
         nvme_addr_read(n, meta, (void *)msl, n_pages * sc->sos);  
-       // printf("hao_debug:aaaaaaaaa %d %d\n", slba, n_pages);
-        //printf("hao:write1111111111111111111111111\n");
     }                                     
-
 
     for (i = 0; i < n_pages; i++) {	
 		//printf("is_write=%d, meta=%d\n", is_write, meta);
         if (is_write) {
-			if (meta) { //hao:Write the metadata corresponding to each page to the corresponding address
+			if (meta) { 
+                //hao:Write the metadata corresponding to each page to the corresponding address
 				if (ftl_meta_write(ssd, ftl_meta_index(ssd, msl, i), request1, i)) {
 					printf("femu_oc_rw: write metadata failed\n");
                     err = NVME_INVALID_FIELD | NVME_DNR;
                     goto fail_free_msl;
-
 				}			
 			}
         // printf("hao:write%d\n",i);           		
@@ -1134,10 +1284,15 @@ if (n_pages > sc->max_page) {
         if (n->femu_mode == FEMU_BLACKBOX_MODE)
             req->expire_time += SSD_READ(ssd, data_size >> 9 , data_offset >> 9) - overhead;
     }
+    // free(request1);
+    // printf("hao:nvme_rw step4\n");
+    nvme_heap_storage_rw(n, ns, cmd, req);
+    // if(meta && is_write)
+    // {
+    //     femu_txw_memcpy(n, request1);
+    // }
     free(request1);
-   // printf("hao:nvme_rw step4\n");
-    //return NVME_SUCCESS;
-    return nvme_heap_storage_rw(n, ns, cmd, req);
+    return NVME_SUCCESS;
 
     dma_acct_start(n->conf.blk, &req->acct, &req->qsg, req->is_write ?
             BLOCK_ACCT_WRITE : BLOCK_ACCT_READ);
@@ -1160,9 +1315,7 @@ if (n_pages > sc->max_page) {
 
 fail_free_msl:
     g_free(msl);
-
     return err;
-
 }
 
 static void nvme_discard_cb(void *opaque, int ret)
@@ -1419,6 +1572,25 @@ static uint16_t nvme_io_cmd(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
     default:
         return NVME_INVALID_OPCODE | NVME_DNR;
     }
+}
+
+static uint16_t nvme_remap(NvmeCtrl *n, NvmeCmd *cmd)
+{
+    NvmeRemap *c = (NvmeRemap *)cmd;
+    uint64_t src_lpn = le64_to_cpu(c->src_lpn);
+    uint64_t dst_lpn = le64_to_cpu(c->dst_lpn);
+    uint32_t len = le32_to_cpu(c->len);
+    uint32_t ope = le32_to_cpu(c->ope);
+    struct ssdstate *ssd = &(n->ssd);
+    void *hs = n->heap_storage;
+    int PAGE_SIZE = ssd->ssdparams.PAGE_SIZE;
+
+    if (n->femu_mode == FEMU_BLACKBOX_MODE)
+        SSD_REMAP(ssd, src_lpn, dst_lpn, len, ope);
+
+    memcpy(hs + (dst_lpn * PAGE_SIZE), hs + (src_lpn * PAGE_SIZE), len * PAGE_SIZE);
+        
+    return NVME_SUCCESS;
 }
 
 static void nvme_free_sq(NvmeSQueue *sq, NvmeCtrl *n)
@@ -2382,6 +2554,8 @@ extern int64_t chnl_page_tr_t;
 static uint16_t nvme_admin_cmd(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
 {
     switch (cmd->opcode) {
+    case NVME_ADM_CMD_REMAP:
+        return nvme_remap(n, cmd);
     case NVME_ADM_CMD_FEMU_DEBUG:
         nand_read_upper_t = le64_to_cpu(cmd->cdw10);
         nand_read_lower_t = le64_to_cpu(cmd->cdw11);
@@ -3004,6 +3178,7 @@ static void nvme_init_namespaces(NvmeCtrl *n)
     int i, j, k;
     int ji = n->meta ? 2 : 1;
 
+    // num_namespaces == 1
     for (i = 0; i < n->num_namespaces; i++) {
         uint64_t blks;
         int lba_index;
@@ -3032,13 +3207,13 @@ static void nvme_init_namespaces(NvmeCtrl *n)
         //     }
         // }
 
-
+        // nlbaf == 5
         for (j = 0; j < n->nlbaf; j++) {
-			id_ns->lbaf[j].ds = 12;
-			id_ns->lbaf[j].ms = 32;
+			id_ns->lbaf[j].ds = DATA_BITS_NVME;
+			id_ns->lbaf[j].ms = PI_BYTES_NVME;
 		}
-		id_ns->lbaf[0].ds = 12;
-		id_ns->lbaf[0].ms = 32;
+		id_ns->lbaf[0].ds = DATA_BITS_NVME;
+		id_ns->lbaf[0].ms = PI_BYTES_NVME;
 
         lba_index = NVME_ID_NS_FLBAS_INDEX(ns->id_ns.flbas);
         blks = n->ns_size / ((1 << id_ns->lbaf[lba_index].ds));
@@ -3267,7 +3442,7 @@ static Property nvme_props[] = {
     DEFINE_PROP_UINT8("dpc", NvmeCtrl, dpc, 12),  //12
     DEFINE_PROP_UINT8("dps", NvmeCtrl, dps, 11),  //11
     DEFINE_PROP_UINT8("mc", NvmeCtrl, mc, 2),     //2
-    DEFINE_PROP_UINT8("meta", NvmeCtrl, meta, 32),  //32
+    DEFINE_PROP_UINT8("meta", NvmeCtrl, meta, PI_BYTES_NVME),  
     DEFINE_PROP_UINT32("cmbsz", NvmeCtrl, cmbsz, 0),
     DEFINE_PROP_UINT32("cmbloc", NvmeCtrl, cmbloc, 0),
     DEFINE_PROP_UINT16("oacs", NvmeCtrl, oacs, NVME_OACS_FORMAT),

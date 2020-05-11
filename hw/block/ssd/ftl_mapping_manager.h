@@ -24,14 +24,11 @@ void INIT_MAPPING_TABLE(struct ssdstate *ssd);
 void TERM_MAPPING_TABLE(struct ssdstate *ssd);
 
 int64_t GET_MAPPING_INFO(struct ssdstate *ssd, int64_t lpn);
-int GET_NEW_PAGE(struct ssdstate *ssd, int mode, int mapping_index, int64_t* ppn, int f2fs_block_type);
+int GET_NEW_PAGE(struct ssdstate *ssd, int mode, int mapping_index, int64_t* ppn);
 
 
 int UPDATE_OLD_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn);
-int UPDATE_NEW_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn, int64_t ppn, int f2fs_block_type);
-int UPDATE_NEW_PAGE_MAPPING2(struct ssdstate *ssd, int64_t lpn, int64_t ppn, int f2fs_block_type);
-
-void TRIM_MAPPING_TABLE(struct ssdstate *ssd, int64_t f2fs_old_lpn);
+int UPDATE_NEW_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn, int64_t ppn, int block_type);
 
 unsigned int CALC_FLASH(struct ssdstate *ssd, int64_t ppn);
 unsigned int CALC_BLOCK(struct ssdstate *ssd, int64_t ppn);
@@ -39,13 +36,6 @@ unsigned int CALC_PAGE(struct ssdstate *ssd, int64_t ppn);
 
 
 //add by hao
-
 void INIT_METADATA_TABLE(struct ssdstate *ssd);
-
-int ftl_meta_state_get(struct ssdstate *ssd, uint64_t lpn,
-        uint32_t *state);
-int ftl_meta_write(struct ssdstate *ssd, void *meta, struct request_f2fs *request1,  uint64_t i);
-void *ftl_meta_index(struct ssdstate *ssd, void *meta, uint32_t index);
-int ftl_meta_read(struct ssdstate *ssd, void *meta);
 
 #endif

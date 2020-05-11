@@ -29,20 +29,12 @@ void GC_CHECK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_
 	int mapping_index = plane_nb * FLASH_NB + phy_flash_nb;
 	
 #ifdef GC_TRIGGER_OVERALL
-	while(ssd->total_empty_block_nb < sc->GC_THRESHOLD_BLOCK_NB || ssd->ws_ppa_free < (sc->GC_THRESHOLD_BLOCK_NB*sc->PAGE_NB))
+	while(ssd->total_empty_block_nb < sc->GC_THRESHOLD_BLOCK_NB || ssd->stat_ppn_free < (sc->GC_THRESHOLD_BLOCK_NB*sc->PAGE_NB))
 	{
 		if(ssd->gc_count % 100 == 1)
 		{
-			ssd->is_GC=1;
-			// ssd->gc_count++;
-			ws_print(ssd);
-
-			if(ssd->gc_count % 10000 == 1)
-			{
-				ssd->is_GC=2;
-				// ssd->gc_count++;
-				ws_print(ssd);
-			}
+			ssd->stat_type=1;
+			stat_print(ssd);
 		}
 #ifdef SUPERBLOCK
 		ret = SB_GARBAGE_COLLECTION(ssd, -1);
@@ -53,7 +45,6 @@ void GC_CHECK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_
 			printf("ssd->fail_cnt = %d\n", ssd->fail_cnt);
 			break;
 		}
-		//printf("ret = %d\n", ret);
 		ssd->gc_count++;
 	}
 #else
@@ -93,7 +84,7 @@ int GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 #ifdef FTL_DEBUG
 printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_block_nb);
 #endif
-	int i;
+	int i = 0, j = 0;
 	int ret;
 	int64_t lpn;
 	int64_t old_ppn;
@@ -102,13 +93,12 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 	unsigned int victim_phy_flash_nb = FLASH_NB;
 	unsigned int victim_phy_block_nb = 0;
 
-	char* valid_array;
+	int8_t* valid_array;
 	int copy_page_nb = 0;
 
 	nand_io_info* n_io_info = NULL;
 	block_state_entry* b_s_entry;
-
-	int f2fs_block_type;
+	inverse_mapping_entry* inverse_entry;
 
     int64_t svb_start = get_ts_in_ns();
 	ret = SELECT_VICTIM_BLOCK(ssd, chip, &victim_phy_flash_nb, &victim_phy_block_nb);
@@ -128,11 +118,6 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 	b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, victim_phy_flash_nb, victim_phy_block_nb);
 	valid_array = b_s_entry->valid_array;
 
-#ifdef MULTISTREAM
-	f2fs_block_type = b_s_entry->type;          //add by hao
-#else
-	f2fs_block_type = DATA_BLOCK;
-#endif 
     int64_t cp_start = get_ts_in_ns();
 
     /* Coperd: we only need one emtpy block */
@@ -148,27 +133,17 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
     int64_t victim_block_base_ppn = victim_phy_flash_nb*PAGES_PER_FLASH + victim_phy_block_nb*PAGE_NB;
 
 	for(i=0;i<PAGE_NB;i++){
-		if(valid_array[i]=='V'){
+		if(valid_array[i] > 0 && valid_array[i] < MAX_LPN_CNT){
 #ifdef GC_VICTIM_OVERALL
-#ifdef MULTISTREAM
-			ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, f2fs_block_type);
+			ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn);
 #else
-			ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, DATA_BLOCK);		
-#endif
-			//printf("hao2222222222222222222222222222222222222\n");
-            //new_ppn = new_ppn_base;
-            //new_ppn_base++;
-#else
-			ret = GET_NEW_PAGE(ssd, VICTIM_INCHIP, mapping_index, &new_ppn, f2fs_block_type);
-            //new_ppn = new_ppn_base;
-            //new_ppn_base++;
+			ret = GET_NEW_PAGE(ssd, VICTIM_INCHIP, mapping_index, &new_ppn);
 #endif
 			if(ret == FAIL){
 				printf("ERROR[%s] Get new page fail\n", __FUNCTION__);
 				return FAIL;
 			}
 
-		
 			/* Read a Valid Page from the Victim NAND Block */
 			//n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_READ, -1, ssd->io_request_seq_nb);
 			SSD_PAGE_READ(ssd, victim_phy_flash_nb, victim_phy_block_nb, i, n_io_info);
@@ -176,115 +151,61 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 			/* Write the Valid Page*/
 			//n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_WRITE, -1, ssd->io_request_seq_nb);
 			SSD_PAGE_WRITE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), n_io_info);
-#ifdef WS_COUNT
-			ssd->ws_gc_read_count++;
-			ssd->ws_gc_write_count++;
-			ssd->ws_user_page_write_between_trim--;
-			ssd->ws_gc_page_write_between_trim++;
-			ssd->ws_temp = get_ts_in_ns();
-			if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
-			{
-				ssd->is_GC = 3;
-				ws_print(ssd);
-				ssd->ws_time = ssd->ws_temp;
-			}
-			ssd->wql_temp = get_ts_in_ns();
-			if(ssd->wql_temp - ssd->wql_time >= 1e9 * PRINT_INTERVAL_WQL)
-			{
-				wql_print(ssd);
-				ssd->wql_time = ssd->wql_temp;
-			}
 
-#endif //WS_COUNT
-			//old_ppn =  victim_block_base_ppn  + i;
+			ssd->stat_gc_write_count++;
+
+#ifdef STAT_COUNT
+			ssd->stat_temp = get_ts_in_ns();
+			if(ssd->stat_temp - ssd->stat_time >= 1e9 * PRINT_INTERVAL)
+			{
+				ssd->stat_type = 3;
+				stat_print(ssd);
+				ssd->stat_time = ssd->stat_temp;
+			}
+#endif //STAT_COUNT
+			
             old_ppn = victim_phy_flash_nb*sc->PAGES_PER_FLASH + victim_phy_block_nb*sc->PAGE_NB + i;
 
-//			lpn = inverse_page_mapping_table[old_ppn];
-#ifdef FTL_MAP_CACHE
-			lpn = CACHE_GET_LPN(ssd, old_ppn);
-#else
-			lpn = GET_INVERSE_MAPPING_INFO(ssd, old_ppn);
-#endif
-			UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, DATA_BLOCK);
-
-			copy_page_nb++;
-		}
-
-		if(valid_array[i] == 'P'){
-#ifdef GC_VICTIM_OVERALL
-#ifdef MULTISTREAM
-			ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, f2fs_block_type);
-#else
-			ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, DATA_BLOCK);		
-#endif
-			//printf("hao2222222222222222222222222222222222222\n");
-            //new_ppn = new_ppn_base;
-            //new_ppn_base++;
-#else
-			ret = GET_NEW_PAGE(ssd, VICTIM_INCHIP, mapping_index, &new_ppn, f2fs_block_type);
-            //new_ppn = new_ppn_base;
-            //new_ppn_base++;
-#endif
-			if(ret == FAIL){
-				printf("ERROR[%s] Get new page fail\n", __FUNCTION__);
-				return FAIL;
-			}
-
-		
-			/* Read a Valid Page from the Victim NAND Block */
-			//n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_READ, -1, ssd->io_request_seq_nb);
-			SSD_PAGE_READ(ssd, victim_phy_flash_nb, victim_phy_block_nb, i, n_io_info);
-
-			/* Write the Valid Page*/
-			//n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_WRITE, -1, ssd->io_request_seq_nb);
-			SSD_PAGE_WRITE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), n_io_info);
-#ifdef WS_COUNT
-			ssd->ws_gc_read_count++;
-			ssd->ws_gc_write_count++;
-			ssd->ws_user_page_write_between_trim--;
-			ssd->ws_gc_page_write_between_trim++;
-			ssd->ws_temp = get_ts_in_ns();
-			if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
+			if(old_ppn == ssd->xl2p_ppn)
 			{
-				ssd->is_GC = 3;
-				ws_print(ssd);
-				ssd->ws_time = ssd->ws_temp;
+				ssd->xl2p_ppn = new_ppn;
+				UPDATE_BLOCK_STATE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), DATA_BLOCK);
+				UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), VALID);
 			}
-			ssd->wql_temp = get_ts_in_ns();
-			if(ssd->wql_temp - ssd->wql_time >= 1e9 * PRINT_INTERVAL_WQL)
+			else
 			{
-				wql_print(ssd);
-				ssd->wql_time = ssd->wql_temp;
-			}
-#endif //WS_COUNT
-			//old_ppn =  victim_block_base_ppn  + i;
-            old_ppn = victim_phy_flash_nb*sc->PAGES_PER_FLASH + victim_phy_block_nb*sc->PAGE_NB + i;
-
-//			lpn = inverse_page_mapping_table[old_ppn];
 #ifdef FTL_MAP_CACHE
-			lpn = CACHE_GET_LPN(ssd, old_ppn);
+				lpn = CACHE_GET_LPN(ssd, old_ppn);
 #else
-			lpn = GET_INVERSE_MAPPING_INFO(ssd, old_ppn);
+				inverse_entry = GET_INVERSE_MAPPING_INFO(ssd, old_ppn);
 #endif
-			UPDATE_NEW_PAGE_MAPPING2(ssd, lpn, new_ppn, DATA_BLOCK);
+				if(valid_array[i] != inverse_entry->lpn_cnt)
+				{
+					printf("ERROR[%s] valid_array[%d] = %d,  old_ppn = %d, lpn_cnt = %d", __FUNCTION__, i, valid_array[i], old_ppn, inverse_entry->lpn_cnt);
+				}
+				for(j = 0; j < MAX_LPN_CNT; j++)
+				{
+					lpn = inverse_entry->lpn[j];
+					if(lpn > 0)
+					{
+						UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, DATA_BLOCK);
+					}
+
+					inverse_entry->lpn[j] = -1;
+				}
+				inverse_entry->lpn_cnt = 0;
+			}
 
 			copy_page_nb++;
 		}
 	}
     ssd->time_cp += get_ts_in_ns() - cp_start;
 
-#ifdef MULTISTREAM
 	if(copy_page_nb != b_s_entry->valid_page_nb){
+		// printf("copy_page_nb = %d, b_s_entry->valid_page_nb = %d\n", copy_page_nb, b_s_entry->valid_page_nb);
 		printf("ERROR[%s] The number of valid page is not correct\n", __FUNCTION__);
 		return FAIL;
 	}
-#else
-	if(copy_page_nb != b_s_entry->valid_page_nb + b_s_entry->prefree_page_nb){
-		// printf("******%d %d %d\n", copy_page_nb, b_s_entry->valid_page_nb, b_s_entry->prefree_page_nb);
-		printf("ERROR[%s] The number of valid page is not correct\n", __FUNCTION__);
-		return FAIL;
-	}
-#endif
 
 #ifdef FTL_DEBUG
 	printf("[%s] [f: %d, b: %d] Copy Page : %d, total victim : %ld, total empty : %ld \n",__FUNCTION__, victim_phy_flash_nb, victim_phy_block_nb,  copy_page_nb, total_victim_block_nb, total_empty_block_nb);
@@ -293,41 +214,23 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
     ssd->mycopy_page_nb += copy_page_nb; 
 
     int64_t up_start = get_ts_in_ns();
+
 	SSD_BLOCK_ERASE(ssd, victim_phy_flash_nb, victim_phy_block_nb);
-#ifdef MULTISTREAM
-	// ssd->empty_head_block_index++;
-	// if (ssd->empty_head_block_index == 13)
-	// 	ssd->empty_head_block_index = 0;
-
-	//curr_root_entry = (empty_block_root*)empty_block_list + mapping_index;
-	//if(curr_root_entry->empty_block_nb == 0)
-	//	UPDATE_BLOCK_STATE(ssd, victim_phy_flash_nb, victim_phy_block_nb, DATA_HOT_COLD_BLOCK);
-	//else
-	UPDATE_BLOCK_STATE(ssd, victim_phy_flash_nb, victim_phy_block_nb, EMPTY_BLOCK);		
-	
-#else
 	UPDATE_BLOCK_STATE(ssd, victim_phy_flash_nb, victim_phy_block_nb, EMPTY_BLOCK);	
-#endif
-
 	INSERT_EMPTY_BLOCK(ssd, victim_phy_flash_nb, victim_phy_block_nb);
+
     ssd->time_up += get_ts_in_ns() - up_start;
 
-#ifdef WS_COUNT
-	ssd->ws_gc_count++;
-	ssd->ws_erase_count++;
+	ssd->stat_gc_count++;
+	ssd->stat_erase_count++;
 
-	ssd->ws_temp = get_ts_in_ns();
-	if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
+#ifdef STAT_COUNT
+	ssd->stat_temp = get_ts_in_ns();
+	if(ssd->stat_temp - ssd->stat_time >= 1e9 * PRINT_INTERVAL)
 	{
-		ssd->is_GC = 3;
-		ws_print(ssd);
-		ssd->ws_time = ssd->ws_temp;
-	}
-	ssd->wql_temp = get_ts_in_ns();
-	if(ssd->wql_temp - ssd->wql_time >= 1e9 * PRINT_INTERVAL_WQL)
-	{
-		wql_print(ssd);
-		ssd->wql_time = ssd->wql_temp;
+		ssd->stat_type = 3;
+		stat_print(ssd);
+		ssd->stat_time = ssd->stat_temp;
 	}
 #endif
 
@@ -403,8 +306,6 @@ int SELECT_VICTIM_BLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_flash_
 
 	block_state_entry* b_s_entry;
 	int curr_valid_page_nb;
-	int curr_prefree_page_nb;
-	double weight;
 
 	if(ssd->total_victim_block_nb == 0){
 		printf("ERROR[%s] There is no victim block\n", __FUNCTION__);
@@ -413,7 +314,6 @@ int SELECT_VICTIM_BLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_flash_
 
 	/* if GC_TRIGGER_OVERALL is defined, then */
 #ifdef GC_TRIGGER_OVERALL
-#ifndef GC_ALPHA
 	curr_v_b_root = (victim_block_root*)victim_block_list;
 
 	for(i=0;i<VICTIM_TABLE_ENTRY_NB;i++){
@@ -426,7 +326,6 @@ int SELECT_VICTIM_BLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_flash_
 				victim_block = curr_v_b_root->head;
 				b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, victim_block->phy_flash_nb, victim_block->phy_block_nb);
 				curr_valid_page_nb = b_s_entry->valid_page_nb;
-				curr_prefree_page_nb = b_s_entry->prefree_page_nb;
 			}
 		}
 		else{
@@ -445,43 +344,6 @@ int SELECT_VICTIM_BLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_flash_
 
 		curr_v_b_root += 1;
 	}
-#else
-	curr_v_b_root = (victim_block_root*)victim_block_list;
-
-	for(i=0;i<VICTIM_TABLE_ENTRY_NB;i++){
-
-		if(curr_v_b_root->victim_block_nb != 0){
-
-			entry_nb = curr_v_b_root->victim_block_nb;
-			curr_v_b_entry = curr_v_b_root->head;
-			if(victim_block == NULL){
-				victim_block = curr_v_b_root->head;
-				b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, victim_block->phy_flash_nb, victim_block->phy_block_nb);
-				curr_valid_page_nb = b_s_entry->valid_page_nb;
-				curr_prefree_page_nb = b_s_entry->prefree_page_nb;
-				weight = b_s_entry->valid_page_nb + GC_ALPHA * b_s_entry->prefree_page_nb;
-				// printf("weight: b_s_entry->valid_page_nb=%d, b_s_entry->prefree_page_nb=%d",b_s_entry->valid_page_nb, b_s_entry->prefree_page_nb);
-			}
-		}
-		else{
-			entry_nb = 0;
-		}
-
-		for(j=0;j<entry_nb;j++){
-			b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, curr_v_b_entry->phy_flash_nb, curr_v_b_entry->phy_block_nb);
-	
-			if(weight > b_s_entry->valid_page_nb + GC_ALPHA * b_s_entry->prefree_page_nb){
-				victim_block = curr_v_b_entry;
-				curr_valid_page_nb = b_s_entry->valid_page_nb;
-				curr_prefree_page_nb = b_s_entry->prefree_page_nb;
-				weight = b_s_entry->valid_page_nb + GC_ALPHA * b_s_entry->prefree_page_nb;
-			}
-			curr_v_b_entry = curr_v_b_entry->next;
-		}
-		// printf("weight = %lf\n");
-		curr_v_b_root += 1;
-	}
-#endif
 #else
 	/* if GC_TREGGER_OVERALL is not defined, then */
 	curr_v_b_root = (victim_block_root*)victim_block_list + chip;
@@ -510,22 +372,13 @@ int SELECT_VICTIM_BLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_flash_
 		curr_v_b_entry = curr_v_b_entry->next;
 	}
 #endif
-#ifdef MULTISTREAM
-	if(curr_valid_page_nb == PAGE_NB){
-		ssd->fail_cnt++;
-		//printf(" Fail Count : %d\n", ssd->fail_cnt);
-		return FAIL;
-	}
-#else
-	if(curr_valid_page_nb + curr_prefree_page_nb == PAGE_NB)
+	if(curr_valid_page_nb = PAGE_NB)
 	{
-		printf("curr_valid_page_nb=%d, curr_prefree_page_nb=%d\n",curr_valid_page_nb, curr_prefree_page_nb);
+		printf("curr_valid_page_nb = %d\n",curr_valid_page_nb);
 		ssd->fail_cnt++;
 		printf(" Fail Count : %d\n", ssd->fail_cnt);
 		return FAIL;
 	}
-
-#endif
 	*phy_flash_nb = victim_block->phy_flash_nb;
 	*phy_block_nb = victim_block->phy_block_nb;
 	EJECT_VICTIM_BLOCK(ssd, victim_block);
@@ -549,7 +402,7 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
     int BLOCK_ERASE_DELAY = sc->BLOCK_ERASE_DELAY;
     int GC_MODE = sc->GC_MODE;
     int CHANNEL_NB = sc->CHANNEL_NB;
-	int SB_BLK_NB = sc->FLASH_NB * sc->PLANES_PER_FLASH;
+	int SB_BLK_NB = sc->FLASH_NB * sc->PLANES_PER_FLASH;	// PLANES_PER_FLASH == 1
     int64_t *gc_slot = ssd->gc_slot;
 
 	int64_t gc_start = get_ts_in_ns();
@@ -558,7 +411,7 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 	printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_block_nb);
 #endif
 
-	int i;
+	int i = 0, j = 0;
 	int ret;
 	int64_t lpn;
 	int64_t old_ppn;
@@ -567,7 +420,7 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 	unsigned int victim_phy_flash_nb = 0;
 	unsigned int victim_phy_block_nb = 0;
 
-	char* valid_array;
+	int8_t* valid_array;
 	int copy_page_nb = 0;
 
 	int valid_page_nb[SB_BLK_NB]; //  WQL : assume plane_per_flash = 1,
@@ -575,6 +428,7 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 
 	nand_io_info* n_io_info = NULL;
 	block_state_entry* b_s_entry;
+	inverse_mapping_entry* inverse_entry;
 
 	int64_t svb_start = get_ts_in_ns();
 
@@ -602,16 +456,12 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 
 		for(i=0;i<PAGE_NB;i++)
 		{
-			if(valid_array[i]=='V')
+			if(valid_array[i] > 0 && valid_array[i] <= MAX_LPN_CNT)
 			{	
 #ifdef GC_VICTIM_OVERALL
-				ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, DATA_BLOCK);
-        	   	//new_ppn = new_ppn_base;
-        	    //new_ppn_base++;
+				ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn);
 #else
 				ret = GET_NEW_PAGE(ssd, VICTIM_INCHIP, mapping_index, &new_ppn);
-         	   //new_ppn = new_ppn_base;
-         	   //new_ppn_base++;
 #endif
 				if(ret == FAIL)
 				{
@@ -626,102 +476,58 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 				/* Write the Valid Page*/
 				n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_WRITE, -1, ssd->io_request_seq_nb);
 				SSD_PAGE_WRITE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), n_io_info);
-#ifdef WS_COUNT
-			ssd->ws_gc_read_count++;
-			ssd->ws_gc_write_count++;
-			ssd->ws_user_page_write_between_trim--;
-			ssd->ws_gc_page_write_between_trim++;
-			ssd->ws_temp = get_ts_in_ns();
-			if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
-			{
-				ssd->is_GC = 3;
-				ws_print(ssd);
-				ssd->ws_time = ssd->ws_temp;
-			}
-			ssd->wql_temp = get_ts_in_ns();
-			if(ssd->wql_temp - ssd->wql_time >= 1e9 * PRINT_INTERVAL_WQL)
-			{
-				wql_print(ssd);
-				ssd->wql_time = ssd->wql_temp;
-			}
-#endif //WS_COUNT	
-				//old_ppn =  victim_block_base_ppn  + i;
-           		old_ppn = victim_phy_flash_nb*sc->PAGES_PER_FLASH + victim_phy_block_nb*sc->PAGE_NB + i;
-
-//				lpn = inverse_page_mapping_table[old_ppn];
-#ifdef FTL_MAP_CACHE
-				lpn = CACHE_GET_LPN(ssd, old_ppn);
-#else
-				lpn = GET_INVERSE_MAPPING_INFO(ssd, old_ppn);
-#endif
-				UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, DATA_BLOCK);
-
-				copy_page_nb++;
-				valid_page_nb[victim_phy_flash_nb]++;
-			}
-			else if(valid_array[i]=='P')
-			{	
-#ifdef GC_VICTIM_OVERALL
-				ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn, DATA_BLOCK);
-        	   	//new_ppn = new_ppn_base;
-        	    //new_ppn_base++;
-#else
-				ret = GET_NEW_PAGE(ssd, VICTIM_INCHIP, mapping_index, &new_ppn);
-         	   //new_ppn = new_ppn_base;
-         	   //new_ppn_base++;
-#endif
-				if(ret == FAIL)
+				
+				ssd->stat_gc_write_count++;
+#ifdef STAT_COUNT
+				ssd->stat_temp = get_ts_in_ns();
+				if(ssd->stat_temp - ssd->stat_time >= 1e9 * PRINT_INTERVAL)
 				{
-					printf("ERROR[%s] Get new page fail\n", __FUNCTION__);
-					return FAIL;
+					ssd->stat_type = 3;
+					stat_print(ssd);
+					ssd->stat_time = ssd->stat_temp;
 				}
-		
-				/* Read a Valid Page from the Victim NAND Block */
-				n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_READ, -1, ssd->io_request_seq_nb);
-				SSD_PAGE_READ(ssd, victim_phy_flash_nb, victim_phy_block_nb, i, n_io_info);
-
-				/* Write the Valid Page*/
-				n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_WRITE, -1, ssd->io_request_seq_nb);
-				SSD_PAGE_WRITE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), n_io_info);
-#ifdef WS_COUNT
-			ssd->ws_gc_read_count++;
-			ssd->ws_gc_write_count++;
-			ssd->ws_user_page_write_between_trim--;
-			ssd->ws_gc_page_write_between_trim++;
-			ssd->ws_gc_old_lpn_count++;
-			ssd->ws_temp = get_ts_in_ns();
-			if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
-			{
-				ssd->is_GC = 3;
-				ws_print(ssd);
-				ssd->ws_time = ssd->ws_temp;
-			}
-			ssd->wql_temp = get_ts_in_ns();
-			if(ssd->wql_temp - ssd->wql_time >= 1e9 * PRINT_INTERVAL_WQL)
-			{
-				wql_print(ssd);
-				ssd->wql_time = ssd->wql_temp;
-			}
-#endif //WS_COUNT
-				//old_ppn =  victim_block_base_ppn  + i;
+#endif //STAT_COUNT	
+				
            		old_ppn = victim_phy_flash_nb*sc->PAGES_PER_FLASH + victim_phy_block_nb*sc->PAGE_NB + i;
 
-//				lpn = inverse_page_mapping_table[old_ppn];
+				if(old_ppn == ssd->xl2p_ppn)
+				{
+					ssd->xl2p_ppn = new_ppn;
+					UPDATE_BLOCK_STATE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), DATA_BLOCK);
+	    			UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), VALID);
+				}
+				else
+				{
 #ifdef FTL_MAP_CACHE
-				lpn = CACHE_GET_LPN(ssd, old_ppn);
+					lpn = CACHE_GET_LPN(ssd, old_ppn);
 #else
-				lpn = GET_INVERSE_MAPPING_INFO(ssd, old_ppn);
+					inverse_entry = GET_INVERSE_MAPPING_INFO(ssd, old_ppn);
 #endif
-				UPDATE_NEW_PAGE_MAPPING2(ssd, lpn, new_ppn, DATA_BLOCK);
+					if(valid_array[i] != inverse_entry->lpn_cnt)
+					{
+						printf("ERROR[%s] valid_array[%d] = %d,  old_ppn = %d, lpn_cnt = %d", __FUNCTION__, i, valid_array[i], old_ppn, inverse_entry->lpn_cnt);
+					}
+					for(j = 0; j < MAX_LPN_CNT; j++)
+					{
+						lpn = inverse_entry->lpn[j];
+						if(lpn > 0)
+						{
+							UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, DATA_BLOCK);
+						}
+
+						inverse_entry->lpn[j] = -1;
+					}
+					inverse_entry->lpn_cnt = 0;
+				}
 
 				copy_page_nb++;
 				valid_page_nb[victim_phy_flash_nb]++;
 			}
 		}
 
-		if(valid_page_nb[victim_phy_flash_nb] != b_s_entry->valid_page_nb + b_s_entry->prefree_page_nb)
+		if(valid_page_nb[victim_phy_flash_nb] != b_s_entry->valid_page_nb)
 		{
-			printf("%d %d %d\n",valid_page_nb[victim_phy_flash_nb],b_s_entry->valid_page_nb,b_s_entry->prefree_page_nb);
+			printf("valid_page_nb[victim_phy_flash_nb] = %d, b_s_entry->valid_page_nb = %d\n", valid_page_nb[victim_phy_flash_nb], b_s_entry->valid_page_nb);
 			printf("ERROR[%s] The number of valid page is not correct\n", __FUNCTION__);
 			return FAIL;
 		}
@@ -744,23 +550,16 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 	}
     ssd->time_up += get_ts_in_ns() - up_start;
 
+	ssd->stat_gc_count++;
+	ssd->stat_erase_count += FLASH_NB * PLANES_PER_FLASH;
 
-#ifdef WS_COUNT
-	ssd->ws_gc_count++;
-	ssd->ws_erase_count += FLASH_NB * PLANES_PER_FLASH;
-
-	ssd->ws_temp = get_ts_in_ns();
-	if(ssd->ws_temp - ssd->ws_time >= 1e9 * PRINT_INTERVAL)
+#ifdef STAT_COUNT
+	ssd->stat_temp = get_ts_in_ns();
+	if(ssd->stat_temp - ssd->stat_time >= 1e9 * PRINT_INTERVAL)
 	{
-		ssd->is_GC = 3;
-		ws_print(ssd);
-		ssd->ws_time = ssd->ws_temp;
-	}
-	ssd->wql_temp = get_ts_in_ns();
-	if(ssd->wql_temp - ssd->wql_time >= 1e9 * PRINT_INTERVAL_WQL)
-	{
-		wql_print(ssd);
-		ssd->wql_time = ssd->wql_temp;
+		ssd->stat_type = 3;
+		stat_print(ssd);
+		ssd->stat_time = ssd->stat_temp;
 	}
 #endif
 
@@ -843,7 +642,7 @@ int SELECT_VICTIM_SUPERBLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_b
 	victim_block_entry* victim_block[SB_BLK_NB]; //  WQL:assume plane_per_flash = 1
 
 	block_state_entry* b_s_entry;
-	int curr_valid_page_nb = 0, curr_prefree_page_nb = 0;
+	int curr_valid_page_nb = 0;
 	int min_valid_page_nb = PAGE_NB * FLASH_NB * sc->PLANES_PER_FLASH;
 
 	if(ssd->total_victim_block_nb == 0)
@@ -869,7 +668,6 @@ int SELECT_VICTIM_SUPERBLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_b
 	for(i=0;i<entry_nb;i++)
 	{
 		curr_valid_page_nb = 0;
-		//curr_prefree_page_nb = 0;
 
 	    for(j=0;j<VICTIM_TABLE_ENTRY_NB;j++)
 		{
@@ -902,20 +700,16 @@ int SELECT_VICTIM_SUPERBLOCK(struct ssdstate *ssd, int chip, unsigned int* phy_b
 			}
 			
 			b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, curr_v_b_entry->phy_flash_nb, curr_v_b_entry->phy_block_nb);
-			curr_valid_page_nb += (b_s_entry->valid_page_nb + b_s_entry->prefree_page_nb);
-			//curr_prefree_page_nb += b_s_entry->prefree_page_nb;			
+			curr_valid_page_nb += b_s_entry->valid_page_nb;
 			
 			// curr_v_b_root++;
 		}
-
-
 					
 		if(curr_valid_page_nb < min_valid_page_nb){
 			off = i;
 			min_valid_page_nb = curr_valid_page_nb;
 		}
 	}
-
 
 	if(min_valid_page_nb == PAGE_NB * FLASH_NB * sc->PLANES_PER_FLASH)
 	{

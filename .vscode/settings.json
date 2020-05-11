@@ -4,7 +4,15 @@
         "ssd.h": "c",
         "ftl_bf.h": "c",
         "common.h": "c",
-        "assert.h": "c"
+        "assert.h": "c",
+        "array": "cpp",
+        "istream": "cpp",
+        "ostream": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp"
     },
     "C_Cpp.errorSquiggles": "Disabled"
 }
