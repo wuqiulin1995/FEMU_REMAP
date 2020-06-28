@@ -460,6 +460,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
     int EMPTY_TABLE_ENTRY_NB = sc->EMPTY_TABLE_ENTRY_NB;
     int64_t cur_need_to_emulate_tt = 0, max_need_to_emulate_tt = 0;
     int64_t curtime = get_usec();
+	int is_dup;
 
 	unsigned int length;
 	int64_t sector_nb;
@@ -556,12 +557,78 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 
 		write_sects = SECTORS_PER_PAGE - left_skip - right_skip;
 		lpn = lba / (int64_t)SECTORS_PER_PAGE;
+#ifdef DUP_RATIO
+		srand((unsigned int)curtime);
+		is_dup = rand()%100;
+		if(is_dup < DUP_RATIO)
+		{
+			h_lpn = lpn-1;
+			flag = DEDUP_WRITE;
+		}
+		else
+		{
+			h_lpn = 0;
+			flag = 0;
+		}
+
+#else
 		h_lpn = request1->lpns_info[write_page_nb].h_lpn;
 		flag = request1->lpns_info[write_page_nb].flag;
+#endif
 
-		if(flag == CP_WRITE)
+		if(flag == CP_WRITE || flag == DEDUP_WRITE || flag == GC_WRITE)
 		{
-			ssd->stat_cp_write++;
+			ssd->stat_reduced_write++;
+
+			if(flag == DEDUP_WRITE)
+			{
+				int64_t dedup_ppn;
+				if(h_lpn > 0)
+				{	
+					int64_t *mapping_table = ssd->mapping_table;
+					dedup_ppn = mapping_table[h_lpn];
+
+					// printf("DEDUP REMAP -- dst_lpn = %ld, h_lpn = %ld, dedup_ppn = %lld\n", lpn, h_lpn, dedup_ppn);
+
+					if(INCREASE_INVERSE_MAPPING(ssd, dedup_ppn, lpn) == SUCCESS)
+					{
+						// write_remap_print(ssd, write_page_nb, lpn, h_lpn);
+
+						UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, dedup_ppn), CALC_BLOCK(ssd, dedup_ppn), CALC_PAGE(ssd, dedup_ppn), VALID);
+
+						UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
+						mapping_table[lpn] = dedup_ppn;
+
+						ssd->stat_remap_cnt++;
+					}
+				}
+			}
+			else if(flag == GC_WRITE)
+			{
+				int64_t gc_ppn;
+				if(h_lpn > 0)
+				{	
+					int64_t *mapping_table = ssd->mapping_table;
+					gc_ppn = mapping_table[h_lpn];
+
+					// printf("GC REMAP -- dst_lpn = %ld, h_lpn = %ld, gc_ppn = %lld\n", lpn, h_lpn, gc_ppn);
+
+					if(INCREASE_INVERSE_MAPPING(ssd, gc_ppn, lpn) == SUCCESS)
+					{
+						// write_remap_print(ssd, write_page_nb, lpn, h_lpn);
+
+						UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, gc_ppn), CALC_BLOCK(ssd, gc_ppn), CALC_PAGE(ssd, gc_ppn), VALID);
+
+						UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
+						mapping_table[lpn] = gc_ppn;
+
+						UPDATE_OLD_PAGE_MAPPING(ssd, h_lpn);
+						mapping_table[h_lpn] = -1;
+
+						ssd->stat_remap_cnt++;
+					}
+				}
+			}
 		}
 		else
 		{

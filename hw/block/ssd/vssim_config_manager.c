@@ -30,7 +30,7 @@ void INIT_STAT_COUNT(struct ssdstate *ssd)
     ssd->stat_gc_remap_write=0;
 	ssd->stat_remap_cnt=0;
 	ssd->stat_commit_cnt=0;
-	ssd->stat_cp_write=0;
+	ssd->stat_reduced_write=0;
 
 	ssd->stat_ppn_valid=0;
 	ssd->stat_ppn_n21=0;
@@ -48,7 +48,7 @@ void INIT_STAT_COUNT(struct ssdstate *ssd)
 		getchar();
 	}
 	fprintf(fout, "stat_type, total page read, total page write, host page write, gc count, \\
-	erase block, gc write,  gc remap cnt, remap cnt, commit cnt, ioctl cp, ppn valid, ppn n21, \\
+	erase block, gc write,  gc remap cnt, remap cnt, commit cnt, reduced (cp||dedup||gc), ppn valid, ppn n21, \\
 	ppn invalid, ppn free, lpn vallid, \n");
 	fclose(fout);
 #endif //STAT_COUNT
@@ -159,7 +159,7 @@ void stat_print(struct ssdstate *ssd)
 	fprintf(fout, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %lu, %lu, %lu, %lu, %lu, \n", 
 		ssd->stat_type, ssd->stat_total_read_count, ssd->stat_total_write_count, ssd->stat_host_write_count,
 		ssd->stat_gc_count, ssd->stat_erase_count, ssd->stat_gc_write_count,
-		ssd->stat_gc_remap_write, ssd->stat_remap_cnt, ssd->stat_commit_cnt, ssd->stat_cp_write, 
+		ssd->stat_gc_remap_write, ssd->stat_remap_cnt, ssd->stat_commit_cnt, ssd->stat_reduced_write, 
 		ssd->stat_ppn_valid, ssd->stat_ppn_n21, ssd->stat_ppn_invalid, 
 		ssd->stat_ppn_free, ssd->stat_lpn_valid);
 	

@@ -21,9 +21,15 @@
 #define DATA_BITS_NVME 12
 #define PI_BYTES_NVME 24
 
-#define X_FTL
+// #define X_FTL
 #define WAL_WRITE 100
 #define CP_WRITE 102
+
+// #define DUP_RATIO 30  // 30% duplicate data
+#define DEDUP_WRITE 103
+
+#define GC_WRITE 104
+
 #define REMAP_CKPT 2
 #define REMAP_COPY 3
 #define REMAP_MOVE 4
@@ -41,7 +47,7 @@
 #define STAT_COUNT
 
 #ifdef STAT_COUNT
-#define STAT_OUTPUT_FILE ("/home/b507/stat.csv")
+#define STAT_OUTPUT_FILE ("/home/nvm/stat.csv")
 #define PRINT_INTERVAL 10	//输出的时间间隔（秒）
 #endif
 

@@ -262,7 +262,7 @@ struct ssdstate {
     uint32_t stat_gc_remap_write;
 	uint32_t stat_remap_cnt;
     uint32_t stat_commit_cnt;
-    uint32_t stat_cp_write;
+    uint32_t stat_reduced_write;
 
     uint64_t stat_ppn_valid;
     uint64_t stat_ppn_n21;
