@@ -463,15 +463,17 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
             if((INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS))
 			{
                 UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);
-				if(d_ppn != -1)
-                {
-                    // printf("ckpt decresse d_lpn = %ld, d_ppn = %ld, s_ppn = %ld\n", d_lpn, d_ppn, s_ppn);
+                UPDATE_NVRAM_OOB(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), VALID);
+				// if(d_ppn != -1)
+                // {
+                //     // printf("ckpt decresse d_lpn = %ld, d_ppn = %ld, s_ppn = %ld\n", d_lpn, d_ppn, s_ppn);
 
-                    if(DECREASE_INVERSE_MAPPING(ssd, d_ppn, d_lpn) == SUCCESS)
-                    {
-                        UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, d_ppn), CALC_BLOCK(ssd, d_ppn), CALC_PAGE(ssd, d_ppn), INVALID);
-                    }
-                }
+                //     if(DECREASE_INVERSE_MAPPING(ssd, d_ppn, d_lpn) == SUCCESS)
+                //     {
+                //         UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, d_ppn), CALC_BLOCK(ssd, d_ppn), CALC_PAGE(ssd, d_ppn), INVALID);
+                //     }
+                // }
+                UPDATE_OLD_PAGE_MAPPING(ssd, d_lpn);
                 mapping_table[d_lpn] = s_ppn;
 
                 // if(s_ppn != -1)
@@ -483,6 +485,7 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
                 //         UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), INVALID);
                 //     }
                 // }
+                // UPDATE_OLD_PAGE_MAPPING(ssd, s_lpn);
 				// mapping_table[s_lpn] = -1;
 
 				ssd->stat_remap_cnt++;
@@ -504,15 +507,17 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
 			if(INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS)
 			{
                 UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);
-				if(d_ppn != -1)
-                {
-                    // printf("copy decresse d_lpn = %ld, d_ppn = %ld, s_ppn = %ld\n", d_lpn, d_ppn, s_ppn);
+                UPDATE_NVRAM_OOB(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), VALID);
+				// if(d_ppn != -1)
+                // {
+                //     // printf("copy decresse d_lpn = %ld, d_ppn = %ld, s_ppn = %ld\n", d_lpn, d_ppn, s_ppn);
 
-                    if(DECREASE_INVERSE_MAPPING(ssd, d_ppn, d_lpn) == SUCCESS)
-                    {
-                        UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, d_ppn), CALC_BLOCK(ssd, d_ppn), CALC_PAGE(ssd, d_ppn), INVALID);
-                    }
-                }
+                //     if(DECREASE_INVERSE_MAPPING(ssd, d_ppn, d_lpn) == SUCCESS)
+                //     {
+                //         UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, d_ppn), CALC_BLOCK(ssd, d_ppn), CALC_PAGE(ssd, d_ppn), INVALID);
+                //     }
+                // }
+                UPDATE_OLD_PAGE_MAPPING(ssd, d_lpn);
                 mapping_table[d_lpn] = s_ppn;
 
 				ssd->stat_remap_cnt++;
@@ -534,24 +539,28 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
 			if(INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS)
 			{
                 UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);
-                if(d_ppn != -1)
-                {
-                    // printf("move decresse d_lpn = %ld, d_ppn = %ld, s_ppn = %ld\n", d_lpn, d_ppn, s_ppn);
+                UPDATE_NVRAM_OOB(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), VALID);
+                // if(d_ppn != -1)
+                // {
+                //     // printf("move decresse d_lpn = %ld, d_ppn = %ld, s_ppn = %ld\n", d_lpn, d_ppn, s_ppn);
 
-                    if(DECREASE_INVERSE_MAPPING(ssd, d_ppn, d_lpn) == SUCCESS)
-                    {
-                        UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, d_ppn), CALC_BLOCK(ssd, d_ppn), CALC_PAGE(ssd, d_ppn), INVALID);
-                    }
-                }
-                if(s_ppn != -1)
-                {
-                    // printf("move decresse s_lpn = %ld, s_ppn = %ld, d_ppn = %ld\n", s_lpn, s_ppn, d_ppn);
+                //     if(DECREASE_INVERSE_MAPPING(ssd, d_ppn, d_lpn) == SUCCESS)
+                //     {
+                //         UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, d_ppn), CALC_BLOCK(ssd, d_ppn), CALC_PAGE(ssd, d_ppn), INVALID);
+                //     }
+                // }
+                // if(s_ppn != -1)
+                // {
+                //     // printf("move decresse s_lpn = %ld, s_ppn = %ld, d_ppn = %ld\n", s_lpn, s_ppn, d_ppn);
 
-                    if(DECREASE_INVERSE_MAPPING(ssd, s_ppn, s_lpn) == SUCCESS)
-                    {
-                        UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), INVALID);
-                    }
-                }
+                //     if(DECREASE_INVERSE_MAPPING(ssd, s_ppn, s_lpn) == SUCCESS)
+                //     {
+                //         UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), INVALID);
+                //     }
+                // }
+
+                UPDATE_OLD_PAGE_MAPPING(ssd, d_lpn);
+                UPDATE_OLD_PAGE_MAPPING(ssd, s_lpn);
 
 				mapping_table[d_lpn] = s_ppn;
 				mapping_table[s_lpn] = -1;

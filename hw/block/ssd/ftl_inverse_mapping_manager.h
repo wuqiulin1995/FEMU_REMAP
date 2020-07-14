@@ -28,7 +28,10 @@ typedef struct block_state_entry
 	int valid_page_nb;  // valid_array > 0
 	int type;
 	unsigned int erase_count;
-	int8_t* valid_array;  // ref cnt, -1: invalid
+	int8_t* valid_array;  // ref cnt, -1: invalid, 0: free
+
+	int full_seg_cnt;  // full OOB segment
+	int OOB_entry_cnt;  // OOB entry count in the in-use segment, can be zero, means no in-use segment
 }block_state_entry;
 
 typedef struct empty_block_root
@@ -97,6 +100,7 @@ int INCREASE_INVERSE_MAPPING(struct ssdstate *ssd, int64_t ppn, int64_t lpn);
 int DECREASE_INVERSE_MAPPING(struct ssdstate *ssd, int64_t ppn, int64_t lpn);
 int UPDATE_BLOCK_STATE(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_block_nb, int type);
 int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_block_nb, unsigned int phy_page_nb, int valid);
+int UPDATE_NVRAM_OOB(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_block_nb, int valid);
 
 void PRINT_VALID_ARRAY(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_block_nb);
 

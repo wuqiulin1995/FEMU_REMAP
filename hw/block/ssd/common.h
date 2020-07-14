@@ -21,6 +21,9 @@
 #define DATA_BITS_NVME 12
 #define PI_BYTES_NVME 24
 
+#define OOB_ENTRY_PER_SEG 640
+#define OOB_ENTRY_BYTES 16
+
 // #define X_FTL
 #define WAL_WRITE 100
 #define CP_WRITE 102
@@ -28,7 +31,7 @@
 // #define DUP_RATIO 30  // 30% duplicate data
 #define DEDUP_WRITE 103
 
-#define GC_WRITE 104
+#define FS_GC_WRITE 104
 
 #define REMAP_CKPT 2
 #define REMAP_COPY 3

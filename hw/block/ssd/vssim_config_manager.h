@@ -271,6 +271,10 @@ struct ssdstate {
 
     uint64_t stat_lpn_valid;
 
+    uint64_t stat_total_OOB_entry;
+    uint64_t stat_total_full_seg;
+    uint64_t stat_total_inuse_seg;
+
     /* Average IO Time */
     double avg_write_delay;
     double total_write_count;

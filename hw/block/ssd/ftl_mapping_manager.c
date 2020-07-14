@@ -154,7 +154,6 @@ int UPDATE_OLD_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn)
 	else{
         if(DECREASE_INVERSE_MAPPING(ssd, old_ppn, lpn) == SUCCESS)
         {
-            // DECREASE_INVERSE_MAPPING(ssd, old_ppn, lpn);
             UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, old_ppn), CALC_BLOCK(ssd, old_ppn), CALC_PAGE(ssd, old_ppn), INVALID);
         }
 	}
@@ -177,6 +176,7 @@ int UPDATE_NEW_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn, int64_t ppn,	int 
 #endif
         UPDATE_BLOCK_STATE(ssd, CALC_FLASH(ssd, ppn), CALC_BLOCK(ssd, ppn), block_type);
 	    UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, ppn), CALC_BLOCK(ssd, ppn), CALC_PAGE(ssd, ppn), VALID);
+        UPDATE_NVRAM_OOB(ssd, CALC_FLASH(ssd, ppn), CALC_BLOCK(ssd, ppn), VALID);
     }
 
 	return SUCCESS;

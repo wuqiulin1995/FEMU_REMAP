@@ -80,6 +80,9 @@ void INIT_BLOCK_STATE_TABLE(struct ssdstate *ssd)
 			curr_b_s_entry->type		= EMPTY_BLOCK;
 			curr_b_s_entry->valid_page_nb	= 0;
 			curr_b_s_entry->erase_count		= 0;
+			curr_b_s_entry->full_seg_cnt	= 0;
+			curr_b_s_entry->OOB_entry_cnt	= 0;
+
 			curr_b_s_entry += 1;
 		}
 	}
@@ -849,6 +852,7 @@ int UPDATE_BLOCK_STATE(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned
 		for(i=0;i<PAGE_NB;i++){
 			UPDATE_BLOCK_STATE_ENTRY(ssd, phy_flash_nb, phy_block_nb, i, 0); 
 		}
+		UPDATE_NVRAM_OOB(ssd, phy_flash_nb, phy_block_nb, 0);
 	}
 
     return SUCCESS;
@@ -964,6 +968,54 @@ int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, un
 	}
 	b_s_entry->valid_page_nb = valid_count;
 	
+	return SUCCESS;
+}
+
+int UPDATE_NVRAM_OOB(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_block_nb, int valid)
+{
+	struct ssdconf *sc = &(ssd->ssdparams);
+    int BLOCK_NB = sc->BLOCK_NB;
+    int FLASH_NB = sc->FLASH_NB;
+
+	if(phy_flash_nb >= FLASH_NB || phy_block_nb >= BLOCK_NB){
+		printf("ERROR[%s] Wrong physical address\n", __FUNCTION__);
+		return FAIL;
+	}
+
+	block_state_entry* b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, phy_flash_nb, phy_block_nb);
+
+	if(valid == VALID)
+	{
+		if(b_s_entry->OOB_entry_cnt == 0)
+		{
+			ssd->stat_total_inuse_seg++;
+		}
+
+		b_s_entry->OOB_entry_cnt++;
+		if(b_s_entry->OOB_entry_cnt == OOB_ENTRY_PER_SEG)
+		{
+			b_s_entry->full_seg_cnt++;
+			b_s_entry->OOB_entry_cnt = 0;
+
+			ssd->stat_total_inuse_seg--;
+			ssd->stat_total_full_seg++;
+		}
+
+		ssd->stat_total_OOB_entry++;
+	}
+	else if(valid == 0)
+	{
+		if(b_s_entry->OOB_entry_cnt > 0)
+		{
+			ssd->stat_total_inuse_seg--;
+		}
+		ssd->stat_total_full_seg -= b_s_entry->full_seg_cnt;
+		ssd->stat_total_OOB_entry -= b_s_entry->full_seg_cnt * OOB_ENTRY_PER_SEG + b_s_entry->OOB_entry_cnt;
+
+		b_s_entry->full_seg_cnt = 0;
+		b_s_entry->OOB_entry_cnt = 0;
+	}
+
 	return SUCCESS;
 }
 

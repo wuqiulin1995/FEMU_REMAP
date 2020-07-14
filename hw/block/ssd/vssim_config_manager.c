@@ -39,6 +39,10 @@ void INIT_STAT_COUNT(struct ssdstate *ssd)
 
 	ssd->stat_lpn_valid=0;
 
+	ssd->stat_total_OOB_entry=0;
+	ssd->stat_total_full_seg=0;
+	ssd->stat_total_inuse_seg=0;
+
 #ifdef STAT_COUNT
 	FILE *fout = NULL;
 	fout = fopen(STAT_OUTPUT_FILE, "w");
@@ -49,7 +53,7 @@ void INIT_STAT_COUNT(struct ssdstate *ssd)
 	}
 	fprintf(fout, "stat_type, total page read, total page write, host page write, gc count, \\
 	erase block, gc write,  gc remap cnt, remap cnt, commit cnt, reduced (cp||dedup||gc), ppn valid, ppn n21, \\
-	ppn invalid, ppn free, lpn vallid, \n");
+	ppn invalid, ppn free, lpn vallid, total OOB entry, total full seg, total inuse seg\n");
 	fclose(fout);
 #endif //STAT_COUNT
 
@@ -156,12 +160,12 @@ void stat_print(struct ssdstate *ssd)
 		getchar();
 	}
 
-	fprintf(fout, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %lu, %lu, %lu, %lu, %lu, \n", 
+	fprintf(fout, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu\n", 
 		ssd->stat_type, ssd->stat_total_read_count, ssd->stat_total_write_count, ssd->stat_host_write_count,
 		ssd->stat_gc_count, ssd->stat_erase_count, ssd->stat_gc_write_count,
 		ssd->stat_gc_remap_write, ssd->stat_remap_cnt, ssd->stat_commit_cnt, ssd->stat_reduced_write, 
 		ssd->stat_ppn_valid, ssd->stat_ppn_n21, ssd->stat_ppn_invalid, 
-		ssd->stat_ppn_free, ssd->stat_lpn_valid);
+		ssd->stat_ppn_free, ssd->stat_lpn_valid, ssd->stat_total_OOB_entry, ssd->stat_total_full_seg, ssd->stat_total_inuse_seg);
 	
 	fflush(fout);
 	fclose(fout);

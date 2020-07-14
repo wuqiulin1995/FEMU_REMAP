@@ -576,11 +576,15 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 		flag = request1->lpns_info[write_page_nb].flag;
 #endif
 
-		if(flag == CP_WRITE || flag == DEDUP_WRITE || flag == GC_WRITE)
+		if(flag == CP_WRITE || flag == DEDUP_WRITE || flag == FS_GC_WRITE)
 		{
 			ssd->stat_reduced_write++;
 
-			if(flag == DEDUP_WRITE)
+			if(flag == CP_WRITE)
+			{
+				//nothing to do
+			}
+			else if(flag == DEDUP_WRITE)
 			{
 				int64_t dedup_ppn;
 				if(h_lpn > 0)
@@ -595,6 +599,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 						// write_remap_print(ssd, write_page_nb, lpn, h_lpn);
 
 						UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, dedup_ppn), CALC_BLOCK(ssd, dedup_ppn), CALC_PAGE(ssd, dedup_ppn), VALID);
+						UPDATE_NVRAM_OOB(ssd, CALC_FLASH(ssd, dedup_ppn), CALC_BLOCK(ssd, dedup_ppn), VALID);
 
 						UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
 						mapping_table[lpn] = dedup_ppn;
@@ -603,7 +608,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 					}
 				}
 			}
-			else if(flag == GC_WRITE)
+			else if(flag == FS_GC_WRITE)
 			{
 				int64_t gc_ppn;
 				if(h_lpn > 0)
@@ -618,6 +623,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 						// write_remap_print(ssd, write_page_nb, lpn, h_lpn);
 
 						UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, gc_ppn), CALC_BLOCK(ssd, gc_ppn), CALC_PAGE(ssd, gc_ppn), VALID);
+						UPDATE_NVRAM_OOB(ssd, CALC_FLASH(ssd, gc_ppn), CALC_BLOCK(ssd, gc_ppn), VALID);
 
 						UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
 						mapping_table[lpn] = gc_ppn;
@@ -712,6 +718,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 					// write_remap_print(ssd, write_page_nb, lpn, h_lpn);
 
 					UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), VALID);
+					UPDATE_NVRAM_OOB(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), VALID);
 
 					UPDATE_OLD_PAGE_MAPPING(ssd, h_lpn);
 					mapping_table[h_lpn] = new_ppn;
