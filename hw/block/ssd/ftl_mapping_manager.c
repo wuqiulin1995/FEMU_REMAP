@@ -23,6 +23,7 @@ void INIT_MAPPING_TABLE(struct ssdstate *ssd)
 
 	/* Allocation Memory for Mapping Table */
 	ssd->mapping_table = (int64_t*)calloc(sc->PAGE_MAPPING_ENTRY_NB, sizeof(int64_t));
+    ssd->in_seg = (int8_t*)calloc(sc->PAGE_MAPPING_ENTRY_NB, sizeof(int8_t));
 	if(ssd->mapping_table == NULL){
 		printf("ERROR[%s] Calloc mapping table fail\n", __FUNCTION__);
 		return;
@@ -40,6 +41,7 @@ void INIT_MAPPING_TABLE(struct ssdstate *ssd)
 		int i;	
 		for(i=0;i<sc->PAGE_MAPPING_ENTRY_NB;i++){
 			ssd->mapping_table[i] = -1;
+            ssd->in_seg[i] = -1;
 		}
 	}
 }
@@ -155,6 +157,10 @@ int UPDATE_OLD_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn)
         if(DECREASE_INVERSE_MAPPING(ssd, old_ppn, lpn) == SUCCESS)
         {
             UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, old_ppn), CALC_BLOCK(ssd, old_ppn), CALC_PAGE(ssd, old_ppn), INVALID);
+            if(ssd->in_seg[lpn] == 1)
+            {
+                INCREASE_INVALID_OOB_ENTRY_COUNT(ssd, CALC_BLOCK(ssd, old_ppn));
+            }
         }
 	}
 
@@ -176,7 +182,6 @@ int UPDATE_NEW_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn, int64_t ppn,	int 
 #endif
         UPDATE_BLOCK_STATE(ssd, CALC_FLASH(ssd, ppn), CALC_BLOCK(ssd, ppn), block_type);
 	    UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, ppn), CALC_BLOCK(ssd, ppn), CALC_PAGE(ssd, ppn), VALID);
-        UPDATE_NVRAM_OOB(ssd, CALC_FLASH(ssd, ppn), CALC_BLOCK(ssd, ppn), VALID);
     }
 
 	return SUCCESS;

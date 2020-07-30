@@ -1039,21 +1039,22 @@ int ftl_meta_write(struct ssdstate *ssd, void *meta, struct request_meta *reques
 	memcpy(ssd->meta_buf, meta, sc->sos);
 	t10 = (struct t10_pi_tuple*) meta;
 
-	request1->lpns_info[i].h_lpn = be64_to_cpu(t10->h_lpn);
+	request1->lpns_info[i].h_lpn = (int64_t)be64_to_cpu(t10->h_lpn);
     request1->lpns_info[i].tx_id = be32_to_cpu(t10->tx_id);
     request1->lpns_info[i].flag = be32_to_cpu(t10->flag);
-
-    // if(request1->lpns_info[i].flag != 0)
-    // {
-    //     metadata_print(ssd, i, request1->lpns_info[i].tx_id, request1->lpns_info[i].flag, request1->lpns_info[i].h_lpn);
-    // }
-
-    if((request1->lpns_info[i].flag != WAL_WRITE && request1->lpns_info[i].flag != WAL_WRITE+1 && request1->lpns_info[i].flag != CP_WRITE) || request1->lpns_info[i].h_lpn >= sc->PAGE_MAPPING_ENTRY_NB)
+	
+    if((request1->lpns_info[i].flag == WAL_WRITE || request1->lpns_info[i].flag == WAL_WRITE+1 || request1->lpns_info[i].flag == CP_WRITE || request1->lpns_info[i].flag == FS_GC_WRITE) && (request1->lpns_info[i].h_lpn >= 0 && request1->lpns_info[i].h_lpn <= sc->PAGE_MAPPING_ENTRY_NB))
     {
+		//printf("nvme flag = %d, h_lpn = %ld\n", request1->lpns_info[i].flag, request1->lpns_info[i].h_lpn);
+    	//metadata_print(ssd, i, request1->lpns_info[i].tx_id, request1->lpns_info[i].flag, request1->lpns_info[i].h_lpn);	
+    }
+	else
+	{
         request1->lpns_info[i].tx_id = 0;
         request1->lpns_info[i].flag = 0;
         request1->lpns_info[i].h_lpn = (int64_t)(-1);
-    }
+	}
+
 	return 0;
 
 #if 0

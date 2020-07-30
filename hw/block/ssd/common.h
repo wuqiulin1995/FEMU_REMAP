@@ -21,26 +21,25 @@
 #define DATA_BITS_NVME 12
 #define PI_BYTES_NVME 24
 
-#define OOB_ENTRY_PER_SEG 640
+#define TOTAL_OOB_SEG 16384 // 40MB NVRAM 
+#define OOB_ENTRY_PER_SEG 160   // 640 / 4
 #define OOB_ENTRY_BYTES 16
+#define INVALID_ENTRY_THRE 0.05 // 无效条目大于总条目的5%可做NVRAM GC
+#define NVRAM_READ_DELAY 50 // 50ns / 64B (PCM)
+#define NVRAM_WRITE_DELAY 500 // 500ns /64B (PCM)
 
 // #define X_FTL
 #define WAL_WRITE 100
 #define CP_WRITE 102
 
-// #define DUP_RATIO 30  // 30% duplicate data
+#define DUP_RATIO 20  // 20% duplicate data
+#define UNIQUE_PAGE_NB 6710886 // max_lpn (8388608, 32GB) * (100 - dup_ratio) / 100
 #define DEDUP_WRITE 103
-
 #define FS_GC_WRITE 104
 
 #define REMAP_CKPT 2
 #define REMAP_COPY 3
 #define REMAP_MOVE 4
-
-#define WHOLE_BLOCKING      1
-#define CHANNEL_BLOCKING    2
-#define CHIP_BLOCKING       3
-
 
  //Multiple bloom filters
 #define FILTER_NUMBER 4
@@ -50,7 +49,7 @@
 #define STAT_COUNT
 
 #ifdef STAT_COUNT
-#define STAT_OUTPUT_FILE ("/home/nvm/stat.csv")
+#define STAT_OUTPUT_FILE ("/home/nvm/stat_remap_fileserver.csv")
 #define PRINT_INTERVAL 10	//输出的时间间隔（秒）
 #endif
 
@@ -64,6 +63,10 @@ typedef struct SUPERBLOCK_DEBUG
 	int block_nb;
 }sb_debug;
 #endif
+
+#define WHOLE_BLOCKING      1
+#define CHANNEL_BLOCKING    2
+#define CHIP_BLOCKING       3
 
 //extern int GC_MODE;
 //extern int64_t *gc_slot;

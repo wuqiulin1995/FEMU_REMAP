@@ -23,15 +23,18 @@ struct ssdstate;
 
 //extern unsigned int empty_block_list_index;
 
+typedef struct NVRAM_OOB_seg {
+	int alloc_seg;  // allocated segment count
+	int free_entry;  // free OOB entry count
+	int invalid_entry; // invalid entry count, followed by decrease inverse mapping
+}NVRAM_OOB_seg;
+
 typedef struct block_state_entry
 {
 	int valid_page_nb;  // valid_array > 0
 	int type;
 	unsigned int erase_count;
 	int8_t* valid_array;  // ref cnt, -1: invalid, 0: free
-
-	int full_seg_cnt;  // full OOB segment
-	int OOB_entry_cnt;  // OOB entry count in the in-use segment, can be zero, means no in-use segment
 }block_state_entry;
 
 typedef struct empty_block_root
@@ -66,8 +69,8 @@ typedef struct victim_block_entry
 }victim_block_entry;
 
 typedef struct inverse_mapping_entry {
-    int8_t remap;
-    int8_t lpn_cnt;
+    int64_t fingerprint;
+	int8_t lpn_cnt;
     int64_t lpn[MAX_LPN_CNT];
 }inverse_mapping_entry;
 
@@ -75,6 +78,8 @@ typedef struct inverse_mapping_entry {
 //extern victim_block_entry* victim_block_list_tail;
 
 void INIT_INVERSE_MAPPING_TABLE(struct ssdstate *ssd);
+void INIT_NVRAM_OOB(struct ssdstate *ssd);
+void INIT_zipf_AND_fingerprint(struct ssdstate *ssd);
 void INIT_BLOCK_STATE_TABLE(struct ssdstate *ssd);
 void INIT_EMPTY_BLOCK_LIST(struct ssdstate *ssd);
 void INIT_VICTIM_BLOCK_LIST(struct ssdstate *ssd);
@@ -94,13 +99,16 @@ int EJECT_VICTIM_BLOCK(struct ssdstate *ssd, victim_block_entry* victim_block);
 
 block_state_entry* GET_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_block_nb);
 
-inverse_mapping_entry* GET_INVERSE_MAPPING_INFO(struct ssdstate *ssd, int64_t lpn);
+inverse_mapping_entry* GET_INVERSE_MAPPING_INFO(struct ssdstate *ssd, int64_t ppn);
 int UPDATE_INVERSE_MAPPING(struct ssdstate *ssd, int64_t ppn, int64_t lpn);
 int INCREASE_INVERSE_MAPPING(struct ssdstate *ssd, int64_t ppn, int64_t lpn);
 int DECREASE_INVERSE_MAPPING(struct ssdstate *ssd, int64_t ppn, int64_t lpn);
 int UPDATE_BLOCK_STATE(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_block_nb, int type);
 int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_block_nb, unsigned int phy_page_nb, int valid);
-int UPDATE_NVRAM_OOB(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_block_nb, int valid);
+int USE_REMAP(struct ssdstate *ssd, unsigned int phy_block_nb);
+int NVRAM_OOB_GC(struct ssdstate *ssd);
+int UPDATE_NVRAM_OOB(struct ssdstate *ssd, unsigned int phy_block_nb, int valid);
+int INCREASE_INVALID_OOB_ENTRY_COUNT(struct ssdstate *ssd, unsigned int phy_block_nb);
 
 void PRINT_VALID_ARRAY(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_block_nb);
 

@@ -210,6 +210,7 @@ struct ssdstate {
     int g_init; // = 0;
 
     int64_t *mapping_table;
+    int8_t *in_seg; // indicates a lpn is in the flash OOB (0) or the NVRAM segment (1)
 
     int* reg_io_cmd;	// READ, WRITE, ERASE
     int* reg_io_type;	// SEQ, RAN, MERGE, GC, etc..
@@ -232,6 +233,10 @@ struct ssdstate {
 
     void* inverse_mapping_table;
     void* block_state_table;
+    void* NVRAM_OOB_TABLE; // per superblock item
+    
+    double* Pzipf; // zipf概率累加，下标为unique page content
+    int64_t* fingerprint; // unique page content到ppn对应关系的数组
 
     void* empty_block_list;
     void* victim_block_list;
@@ -246,7 +251,7 @@ struct ssdstate {
 
     /* Statistic by WangShuai*/
     //Unit: Page
-    uint8_t stat_type;  // 1: gc 100, 2: discard, 3: r/w/gc 10s, 4: remap 10s
+    uint8_t stat_type;  // 1: gc 100, 2: discard, 3: r/w/gc 10s, 4: remap 10000 times
 
     uint64_t stat_time;    //Used for printf.
     uint64_t stat_temp;    //Used for printf.
@@ -257,9 +262,8 @@ struct ssdstate {
 
     uint32_t stat_gc_count;
     uint32_t stat_erase_count;
-
     uint32_t stat_gc_write_count;
-    uint32_t stat_gc_remap_write;
+
 	uint32_t stat_remap_cnt;
     uint32_t stat_commit_cnt;
     uint32_t stat_reduced_write;
@@ -271,9 +275,14 @@ struct ssdstate {
 
     uint64_t stat_lpn_valid;
 
+    uint64_t stat_total_alloc_seg;
     uint64_t stat_total_OOB_entry;
-    uint64_t stat_total_full_seg;
-    uint64_t stat_total_inuse_seg;
+    uint64_t stat_total_invalid_entry;
+    uint64_t stat_total_seg_bytes;
+
+    double stat_avg_write_delay;
+    double stat_total_write_req;
+    double stat_total_write_delay;
 
     /* Average IO Time */
     double avg_write_delay;
@@ -511,3 +520,4 @@ void increase_debug_print(struct ssdstate *ssd, int64_t ppn, int64_t lpn, int32_
 void decrease_debug_print(struct ssdstate *ssd, int64_t ppn, int64_t lpn, int32_t lpn_cnt);
 
 #endif
+

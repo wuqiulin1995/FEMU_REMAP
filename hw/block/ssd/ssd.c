@@ -445,10 +445,10 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
 {
     int64_t *mapping_table = ssd->mapping_table;
     uint64_t s_lpn = src_lpn, d_lpn = dst_lpn;
-    int64_t s_ppn = 0, d_ppn = 0;
+    int64_t s_ppn = -1;
     int32_t remain = 0;
 
-    printf("remap process s_lpn = %lu, d_lpn = %lu, len = %u, ope = %u\n", s_lpn, d_lpn, len, ope);
+    // printf("remap process s_lpn = %lu, d_lpn = %lu, len = %u, ope = %u\n", s_lpn, d_lpn, len, ope);
 
     switch(ope)
     {
@@ -456,35 +456,18 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
         for(remain = len; remain > 0; remain--)
         {
             s_ppn = mapping_table[s_lpn];
-            d_ppn = mapping_table[d_lpn];
 
             // printf("ckpt incresse s_lpn = %ld, s_ppn = %ld, d_lpn = %ld\n", s_lpn, s_ppn, d_lpn);
 
             if((INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS))
 			{
                 UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);
-                UPDATE_NVRAM_OOB(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), VALID);
-				// if(d_ppn != -1)
-                // {
-                //     // printf("ckpt decresse d_lpn = %ld, d_ppn = %ld, s_ppn = %ld\n", d_lpn, d_ppn, s_ppn);
-
-                //     if(DECREASE_INVERSE_MAPPING(ssd, d_ppn, d_lpn) == SUCCESS)
-                //     {
-                //         UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, d_ppn), CALC_BLOCK(ssd, d_ppn), CALC_PAGE(ssd, d_ppn), INVALID);
-                //     }
-                // }
+                UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, s_ppn), VALID);
+                ssd->in_seg[d_lpn] = 1;
+            
                 UPDATE_OLD_PAGE_MAPPING(ssd, d_lpn);
                 mapping_table[d_lpn] = s_ppn;
 
-                // if(s_ppn != -1)
-                // {
-                //     printf("move decresse s_lpn = %ld, s_ppn = %ld, d_ppn = %ld\n", s_lpn, s_ppn, d_ppn);
-
-                //     if(DECREASE_INVERSE_MAPPING(ssd, s_ppn, s_lpn) == SUCCESS)
-                //     {
-                //         UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), INVALID);
-                //     }
-                // }
                 // UPDATE_OLD_PAGE_MAPPING(ssd, s_lpn);
 				// mapping_table[s_lpn] = -1;
 
@@ -500,23 +483,15 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
         for(remain = len; remain > 0; remain--)
         {
             s_ppn = mapping_table[s_lpn];
-            d_ppn = mapping_table[d_lpn];
 
             // printf("copy incresse s_lpn = %ld, s_ppn = %ld, d_lpn = %ld\n", s_lpn, s_ppn, d_lpn);
 
 			if(INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS)
 			{
                 UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);
-                UPDATE_NVRAM_OOB(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), VALID);
-				// if(d_ppn != -1)
-                // {
-                //     // printf("copy decresse d_lpn = %ld, d_ppn = %ld, s_ppn = %ld\n", d_lpn, d_ppn, s_ppn);
+                UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, s_ppn), VALID);
+                ssd->in_seg[d_lpn] = 1;
 
-                //     if(DECREASE_INVERSE_MAPPING(ssd, d_ppn, d_lpn) == SUCCESS)
-                //     {
-                //         UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, d_ppn), CALC_BLOCK(ssd, d_ppn), CALC_PAGE(ssd, d_ppn), INVALID);
-                //     }
-                // }
                 UPDATE_OLD_PAGE_MAPPING(ssd, d_lpn);
                 mapping_table[d_lpn] = s_ppn;
 
@@ -532,38 +507,21 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
         for(remain = len; remain > 0; remain--)
         {
             s_ppn = mapping_table[s_lpn];
-            d_ppn = mapping_table[d_lpn];
 
             // printf("move incresse s_lpn = %ld, s_ppn = %ld, d_lpn = %ld\n", s_lpn, s_ppn, d_lpn);
 
 			if(INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS)
 			{
                 UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);
-                UPDATE_NVRAM_OOB(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), VALID);
-                // if(d_ppn != -1)
-                // {
-                //     // printf("move decresse d_lpn = %ld, d_ppn = %ld, s_ppn = %ld\n", d_lpn, d_ppn, s_ppn);
-
-                //     if(DECREASE_INVERSE_MAPPING(ssd, d_ppn, d_lpn) == SUCCESS)
-                //     {
-                //         UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, d_ppn), CALC_BLOCK(ssd, d_ppn), CALC_PAGE(ssd, d_ppn), INVALID);
-                //     }
-                // }
-                // if(s_ppn != -1)
-                // {
-                //     // printf("move decresse s_lpn = %ld, s_ppn = %ld, d_ppn = %ld\n", s_lpn, s_ppn, d_ppn);
-
-                //     if(DECREASE_INVERSE_MAPPING(ssd, s_ppn, s_lpn) == SUCCESS)
-                //     {
-                //         UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), INVALID);
-                //     }
-                // }
+                UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, s_ppn), VALID);
+                ssd->in_seg[d_lpn] = 1;
 
                 UPDATE_OLD_PAGE_MAPPING(ssd, d_lpn);
-                UPDATE_OLD_PAGE_MAPPING(ssd, s_lpn);
+                mapping_table[d_lpn] = s_ppn;
 
-				mapping_table[d_lpn] = s_ppn;
+                UPDATE_OLD_PAGE_MAPPING(ssd, s_lpn);				
 				mapping_table[s_lpn] = -1;
+
 				ssd->stat_remap_cnt++;
 			}
 
@@ -577,12 +535,10 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
     }
 
 #ifdef STAT_COUNT
-    ssd->stat_temp = get_ts_in_ns();
-    if(ssd->stat_temp - ssd->stat_time >= 1e9 * PRINT_INTERVAL)
+    if(ssd->stat_remap_cnt % 10000 == 1)
     {
         ssd->stat_type = 4;
         stat_print(ssd);
-        ssd->stat_time = ssd->stat_temp;
     }
 #endif //STAT_COUNT
 
