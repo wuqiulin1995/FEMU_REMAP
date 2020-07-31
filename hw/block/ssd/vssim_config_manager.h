@@ -281,8 +281,8 @@ struct ssdstate {
     uint64_t stat_total_seg_bytes;
 
     double stat_avg_write_delay;
-    double stat_total_write_req;
-    double stat_total_write_delay;
+    double stat_write_req_print;
+    double stat_write_delay_print;
 
     /* Average IO Time */
     double avg_write_delay;

@@ -33,7 +33,7 @@
 #define CP_WRITE 102
 
 #define DUP_RATIO 20  // 20% duplicate data
-#define UNIQUE_PAGE_NB 6710886 // max_lpn (8388608, 32GB) * (100 - dup_ratio) / 100
+#define UNIQUE_PAGE_NB 5120000 // lpn_valid (6400000) * (100 - dup_ratio) / 100
 #define DEDUP_WRITE 103
 #define FS_GC_WRITE 104
 

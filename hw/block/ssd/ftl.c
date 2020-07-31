@@ -794,9 +794,9 @@ skip:
 		left_skip = 0;
 	} // while(remain > 0)
 
-	ssd->stat_total_write_req++;
-	ssd->stat_total_write_delay += (double)max_need_to_emulate_tt;
-	ssd->stat_avg_write_delay = ssd->stat_total_write_delay / ssd->stat_total_write_req;
+	ssd->stat_write_req_print++;
+	ssd->stat_write_delay_print += (double)max_need_to_emulate_tt;
+	ssd->stat_avg_write_delay = ssd->stat_write_delay_print / ssd->stat_write_req_print;
 
     if (blocking_to > curtime) {
         ssd->nb_blocked_writes++;
