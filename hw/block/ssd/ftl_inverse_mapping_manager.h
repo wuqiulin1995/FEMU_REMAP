@@ -68,11 +68,21 @@ typedef struct victim_block_entry
 	struct victim_block_entry* next;
 }victim_block_entry;
 
+typedef struct inverse_node {
+    int64_t lpn;
+	struct inverse_node* pre;
+	struct inverse_node* next;
+}inverse_node;
+
 typedef struct inverse_mapping_entry {
     int64_t fingerprint;
 	int8_t lpn_cnt;
-    int64_t lpn[MAX_LPN_CNT];
+	// int64_t lpn[MAX_LPN_CNT];
+    struct inverse_node* head;
+	struct inverse_node* tail;
 }inverse_mapping_entry;
+
+
 
 //extern victim_block_entry* victim_block_list_head;
 //extern victim_block_entry* victim_block_list_tail;

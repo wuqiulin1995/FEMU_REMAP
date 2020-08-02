@@ -17,7 +17,7 @@
 #include "ftl_type.h"
 #include "god.h"
 
-#define MAX_LPN_CNT 4
+// #define MAX_LPN_CNT 100
 #define DATA_BITS_NVME 12
 #define PI_BYTES_NVME 24
 
@@ -32,8 +32,8 @@
 #define WAL_WRITE 100
 #define CP_WRITE 102
 
-#define DUP_RATIO 20  // 20% duplicate data
-#define UNIQUE_PAGE_NB 5120000 // lpn_valid (6400000) * (100 - dup_ratio) / 100
+// #define DUP_RATIO 10  // 10% duplicate data
+#define UNIQUE_PAGE_NB 5850000 // lpn_valid (6500000) * (100 - dup_ratio) / 100
 #define DEDUP_WRITE 103
 #define FS_GC_WRITE 104
 
@@ -49,7 +49,7 @@
 #define STAT_COUNT
 
 #ifdef STAT_COUNT
-#define STAT_OUTPUT_FILE ("/home/nvm/stat_remap_fileserver.csv")
+#define STAT_OUTPUT_FILE ("/home/nvm/stat_dedup_base_fiorandw_ext4.csv")
 #define PRINT_INTERVAL 10	//输出的时间间隔（秒）
 #endif
 
