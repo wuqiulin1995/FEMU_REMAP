@@ -293,7 +293,7 @@ int64_t SSD_PAGE_PARTIAL_WRITE(struct ssdstate *ssd, unsigned int old_flash_nb, 
 #endif
 }
 
-void UPDATE_FLASH_TS(struct ssdstate *ssd, int64_t blocking_time)
+void UPDATE_FLASH_TS(struct ssdstate *ssd, int64_t need_time)
 {
 	struct ssdconf *sc = &(ssd->ssdparams);
 	int i = 0;
@@ -302,11 +302,29 @@ void UPDATE_FLASH_TS(struct ssdstate *ssd, int64_t blocking_time)
 
 	for(i = 0; i < sc->FLASH_NB; i++)
 	{
-		if(chip_next_avail_time[i] < now + blocking_time)
+		if(chip_next_avail_time[i] < now + need_time)
 		{
-			chip_next_avail_time[i] = now + blocking_time;
+			chip_next_avail_time[i] = now + need_time;
 		}
 	}
+}
+
+int64_t UPDATE_NVRAM_TS(struct ssdstate *ssd, int64_t need_time)
+{
+    int64_t now = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+	int64_t cur_need_to_emulate_tt = 0;
+
+	if(now < ssd->nvram_next_avail_time)
+	{
+		ssd->nvram_next_avail_time += need_time;
+	}
+	else
+	{
+		ssd->nvram_next_avail_time = now + need_time;
+	}
+	cur_need_to_emulate_tt = ssd->nvram_next_avail_time - now;
+	
+	return cur_need_to_emulate_tt;
 }
 
 int64_t SSD_PAGE_READ(struct ssdstate *ssd, unsigned int flash_nb, 

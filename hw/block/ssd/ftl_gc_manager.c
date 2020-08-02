@@ -32,13 +32,13 @@ void GC_CHECK(struct ssdstate *ssd, unsigned int phy_flash_nb, unsigned int phy_
 	while(ssd->total_empty_block_nb < sc->GC_THRESHOLD_BLOCK_NB || ssd->stat_ppn_free < (sc->GC_THRESHOLD_BLOCK_NB*sc->PAGE_NB))
 	{
 
-#ifdef STAT_COUNT
-		if(ssd->gc_count % 100 == 1)
-		{
-			ssd->stat_type=1;
-			stat_print(ssd);
-		}
-#endif
+// #ifdef STAT_COUNT
+// 		if(ssd->gc_count % 100 == 1)
+// 		{
+// 			ssd->stat_type=1;
+// 			stat_print(ssd);
+// 		}
+// #endif
 
 #ifdef SUPERBLOCK
 		ret = SB_GARBAGE_COLLECTION(ssd, -1);
@@ -113,7 +113,7 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 
 	int64_t svb_start = get_ts_in_ns();
 
-	int64_t NVRAM_OOB_read_time = 0;
+	int64_t NVRAM_OOB_read_time = 0, blocking_time = 0;
 	void* NVRAM_OOB_TABLE = ssd->NVRAM_OOB_TABLE;
 	NVRAM_OOB_seg* OOB_seg;
 	int entry_nb = 0;
@@ -131,9 +131,13 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 		return FAIL;
 	}
 
-	OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE + victim_phy_block_nb;
-	entry_nb = OOB_seg->alloc_seg * OOB_ENTRY_PER_SEG - OOB_seg->free_entry;
-	NVRAM_OOB_read_time = entry_nb * OOB_ENTRY_BYTES * NVRAM_READ_DELAY / 64;
+	OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE;
+	if(OOB_seg->total_entry > 0)
+	{
+		entry_nb = OOB_seg->total_entry;
+		NVRAM_OOB_read_time = (int64_t)entry_nb * OOB_ENTRY_BYTES * NVRAM_READ_DELAY / 64;
+		blocking_time = UPDATE_NVRAM_TS(ssd, NVRAM_OOB_read_time);
+	}
 
 	int64_t cp_start = get_ts_in_ns();
 
@@ -144,16 +148,23 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 
 		for(i=0;i<PAGE_NB;i++)
 		{
-			if(valid_array[i] > 0 && valid_array[i] <= MAX_LPN_CNT)
+			// if(valid_array[i] > 0 && valid_array[i] <= MAX_LPN_CNT)
+			if(valid_array[i] > 0)
 			{	
 				n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_READ, -1, ssd->io_request_seq_nb);
 				SSD_PAGE_READ(ssd, victim_phy_flash_nb, victim_phy_block_nb, i, n_io_info);
 			}
 		}
 	}
-	
-	UPDATE_FLASH_TS(ssd, NVRAM_OOB_read_time);
-	UPDATE_NVRAM_OOB(ssd, victim_phy_block_nb, 0);  // per superblock item
+
+	if(blocking_time > 0)
+	{
+		UPDATE_FLASH_TS(ssd, blocking_time);
+
+		ssd->stat_GCRNVRAM_print++;
+		ssd->stat_GCRNVRAM_delay_print += blocking_time;
+		ssd->stat_avg_GCRNVRAM_delay = ssd->stat_GCRNVRAM_delay_print / ssd->stat_GCRNVRAM_print;
+	}
 
     for(victim_phy_flash_nb=0; victim_phy_flash_nb<SB_BLK_NB; victim_phy_flash_nb++)
 	{
@@ -165,7 +176,8 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 
 		for(i=0;i<PAGE_NB;i++)
 		{
-			if(valid_array[i] > 0 && valid_array[i] <= MAX_LPN_CNT)
+			// if(valid_array[i] > 0 && valid_array[i] <= MAX_LPN_CNT)
+			if(valid_array[i] > 0)
 			{	
 #ifdef GC_VICTIM_OVERALL
 				ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn);
@@ -216,28 +228,50 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 					{
 						printf("ERROR[%s] valid_array[%d] = %d,  old_ppn = %d, lpn_cnt = %d", __FUNCTION__, i, valid_array[i], old_ppn, inverse_entry->lpn_cnt);
 					}
-					for(j = 0; j < MAX_LPN_CNT; j++)
+					// for(j = 0; j < MAX_LPN_CNT; j++)
+					// {
+					// 	lpn = inverse_entry->lpn[j];
+					// 	if(lpn > 0)
+					// 	{
+					// 		UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, DATA_BLOCK);
+
+					// 		if(oob_write == 0)
+					// 		{
+					// 			ssd->in_nvram[lpn] = 0;
+					// 			oob_write = 1;
+					// 		}
+					// 		else
+					// 		{
+					// 			UPDATE_NVRAM_OOB(ssd, VALID);
+					// 			ssd->in_nvram[lpn] = 1;
+					// 		}
+					// 	}
+
+					// 	inverse_entry->lpn[j] = -1;
+					// }
+
+					while(inverse_entry->tail != NULL)
 					{
-						lpn = inverse_entry->lpn[j];
-						if(lpn > 0)
+						lpn = inverse_entry->tail->lpn;
+						DECREASE_INVERSE_MAPPING(ssd, old_ppn, lpn);
+						if(ssd->in_nvram[lpn] == 1)
 						{
-							UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, DATA_BLOCK);
-
-							if(oob_write == 0)
-							{
-								ssd->in_seg[lpn] = 0;
-								oob_write = 1;
-							}
-							else
-							{
-								UPDATE_NVRAM_OOB(ssd, victim_phy_block_nb, VALID);
-								ssd->in_seg[lpn] = 1;
-							}
+							INCREASE_INVALID_OOB_ENTRY_COUNT(ssd);
 						}
+						UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, DATA_BLOCK);
 
-						inverse_entry->lpn[j] = -1;
+						if(oob_write == 0)
+						{
+							ssd->in_nvram[lpn] = 0;
+							oob_write = 1;
+						}
+						else
+						{
+							UPDATE_NVRAM_OOB(ssd, VALID);
+							ssd->in_nvram[lpn] = 1;
+						}
 					}
-					inverse_entry->lpn_cnt = 0;
+					// inverse_entry->lpn_cnt = 0;
 #ifdef DUP_RATIO
 					fing = inverse_entry->fingerprint;
 					inverse_entry->fingerprint = -1;
@@ -283,15 +317,15 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 	ssd->stat_gc_count++;
 	ssd->stat_erase_count += FLASH_NB * PLANES_PER_FLASH;
 
-#ifdef STAT_COUNT
-	ssd->stat_temp = get_ts_in_ns();
-	if(ssd->stat_temp - ssd->stat_time >= 1e9 * PRINT_INTERVAL)
-	{
-		ssd->stat_type = 3;
-		stat_print(ssd);
-		ssd->stat_time = ssd->stat_temp;
-	}
-#endif
+// #ifdef STAT_COUNT
+// 	ssd->stat_temp = get_ts_in_ns();
+// 	if(ssd->stat_temp - ssd->stat_time >= 1e9 * PRINT_INTERVAL)
+// 	{
+// 		ssd->stat_type = 3;
+// 		stat_print(ssd);
+// 		ssd->stat_time = ssd->stat_temp;
+// 	}
+// #endif
 
     /* Coperd: keep trace of #gc of last time */
     ssd->mygc_cnt += 1; 
@@ -543,12 +577,12 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 	gc_empty_block->curr_phy_page_nb += 1;
 #endif
 
-	// UPDATE_NVRAM_OOB(ssd, victim_phy_block_nb, 0);  //need to be fixed
-
     int64_t victim_block_base_ppn = victim_phy_flash_nb*PAGES_PER_FLASH + victim_phy_block_nb*PAGE_NB;
 
 	for(i=0;i<PAGE_NB;i++){
-		if(valid_array[i] > 0 && valid_array[i] < MAX_LPN_CNT){
+		// if(valid_array[i] > 0 && valid_array[i] < MAX_LPN_CNT)
+		if(valid_array[i] > 0)
+		{
 #ifdef GC_VICTIM_OVERALL
 			ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn);
 #else
@@ -598,17 +632,59 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 				{
 					printf("ERROR[%s] valid_array[%d] = %d,  old_ppn = %d, lpn_cnt = %d", __FUNCTION__, i, valid_array[i], old_ppn, inverse_entry->lpn_cnt);
 				}
-				for(j = 0; j < MAX_LPN_CNT; j++)
-				{
-					lpn = inverse_entry->lpn[j];
-					if(lpn > 0)
+				// for(j = 0; j < MAX_LPN_CNT; j++)
+					// {
+					// 	lpn = inverse_entry->lpn[j];
+					// 	if(lpn > 0)
+					// 	{
+					// 		UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, DATA_BLOCK);
+
+					// 		if(oob_write == 0)
+					// 		{
+					// 			ssd->in_nvram[lpn] = 0;
+					// 			oob_write = 1;
+					// 		}
+					// 		else
+					// 		{
+					// 			UPDATE_NVRAM_OOB(ssd, VALID);
+					// 			ssd->in_nvram[lpn] = 1;
+					// 		}
+					// 	}
+
+					// 	inverse_entry->lpn[j] = -1;
+					// }
+
+					while(inverse_entry->tail != NULL)
 					{
+						lpn = inverse_entry->tail->lpn;
+						DECREASE_INVERSE_MAPPING(ssd, old_ppn, lpn);
+						if(ssd->in_nvram[lpn] == 1)
+						{
+							INCREASE_INVALID_OOB_ENTRY_COUNT(ssd);
+						}
 						UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, DATA_BLOCK);
+
+						if(oob_write == 0)
+						{
+							ssd->in_nvram[lpn] = 0;
+							oob_write = 1;
+						}
+						else
+						{
+							UPDATE_NVRAM_OOB(ssd, VALID);
+							ssd->in_nvram[lpn] = 1;
+						}
 					}
 
-					inverse_entry->lpn[j] = -1;
-				}
-				inverse_entry->lpn_cnt = 0;
+					inverse_entry->lpn_cnt = 0;
+#ifdef DUP_RATIO
+					fing = inverse_entry->fingerprint;
+					inverse_entry->fingerprint = -1;
+
+					ssd->fingerprint[fing] = new_ppn;
+					inverse_entry = GET_INVERSE_MAPPING_INFO(ssd, new_ppn);
+					inverse_entry->fingerprint = fing;
+#endif
 			}
 
 			copy_page_nb++;
@@ -639,15 +715,15 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 	ssd->stat_gc_count++;
 	ssd->stat_erase_count++;
 
-#ifdef STAT_COUNT
-	ssd->stat_temp = get_ts_in_ns();
-	if(ssd->stat_temp - ssd->stat_time >= 1e9 * PRINT_INTERVAL)
-	{
-		ssd->stat_type = 3;
-		stat_print(ssd);
-		ssd->stat_time = ssd->stat_temp;
-	}
-#endif
+// #ifdef STAT_COUNT
+// 	ssd->stat_temp = get_ts_in_ns();
+// 	if(ssd->stat_temp - ssd->stat_time >= 1e9 * PRINT_INTERVAL)
+// 	{
+// 		ssd->stat_type = 3;
+// 		stat_print(ssd);
+// 		ssd->stat_time = ssd->stat_temp;
+// 	}
+// #endif
 
     /* Coperd: keep trace of #gc of last time */
     ssd->mygc_cnt += 1; 

@@ -46,10 +46,12 @@ void INIT_INVERSE_MAPPING_TABLE(struct ssdstate *ssd)
 	{
 		inverse->fingerprint = -1;
 		inverse->lpn_cnt = 0;
-		for(j = 0; j < MAX_LPN_CNT; j++)
-		{
-			inverse->lpn[j] = -1;
-		}
+		// for(j = 0; j < MAX_LPN_CNT; j++)
+		// {
+		// 	inverse->lpn[j] = -1;
+		// }
+		inverse->head = NULL;
+		inverse->tail = NULL;
 
 		inverse += 1;
 	}
@@ -57,26 +59,17 @@ void INIT_INVERSE_MAPPING_TABLE(struct ssdstate *ssd)
 
 void INIT_NVRAM_OOB(struct ssdstate *ssd)
 {
-    struct ssdconf *sc = &(ssd->ssdparams);
-    int64_t SUPERBLOCK_NB = sc->BLOCK_NB;
-
 	/* Allocation Memory for NVRAM_OOB_TABLE */
-	ssd->NVRAM_OOB_TABLE = (void*)calloc(SUPERBLOCK_NB, sizeof(NVRAM_OOB_seg));
+	ssd->NVRAM_OOB_TABLE = (void*)calloc(1, sizeof(NVRAM_OOB_seg));
 	if(ssd->NVRAM_OOB_TABLE == NULL){
 		printf("ERROR[%s] Calloc NVRAM_OOB_TABLE fail\n", __FUNCTION__);
 		return;
 	}
 
-	int i;
 	NVRAM_OOB_seg* curr_OOB_seg = (NVRAM_OOB_seg*)ssd->NVRAM_OOB_TABLE;
 
-	for(i=0;i<SUPERBLOCK_NB;i++){
-		curr_OOB_seg->alloc_seg = 0;
-		curr_OOB_seg->free_entry = 0;
-		curr_OOB_seg->invalid_entry = 0;
-
-		curr_OOB_seg += 1;
-	}
+	curr_OOB_seg->total_entry = 0;
+	curr_OOB_seg->invalid_entry = 0;
 }
 
 void INIT_zipf_AND_fingerprint(struct ssdstate *ssd)
@@ -827,26 +820,55 @@ int INCREASE_INVERSE_MAPPING(struct ssdstate *ssd, int64_t ppn, int64_t lpn)
 	}
 	
 	inverse_mapping_entry* inverse_entry = (inverse_mapping_entry*)inverse_mapping_table + ppn;
+	inverse_node* new_inverse_node;
 
-	if(inverse_entry->lpn_cnt == MAX_LPN_CNT)
+	// if(inverse_entry->lpn_cnt == MAX_LPN_CNT)
+	// {
+	// 	printf("ERROR[%s]: Increase inverse mapping at MAX_LPN_CNT: ppn = %ld, lpn = %ld\n", __FUNCTION__, ppn, lpn);
+	// 	return FAIL;
+	// }
+
+	// for(i = 0; i < MAX_LPN_CNT; i++)
+	// {
+	// 	if(inverse_entry->lpn[i] == -1)
+	// 	{
+	// 		inverse_entry->lpn[i] = lpn;
+	// 		inverse_entry->lpn_cnt++;
+	// 		// increase_debug_print(ssd, ppn, lpn, inverse_entry->lpn_cnt);
+	// 		return SUCCESS;
+	// 	}
+	// }
+
+	// printf("ERROR[%s]: Increase inverse mapping ---FAIL---: ppn = %ld, lpn = %ld\n", __FUNCTION__, ppn, lpn);
+	// return FAIL;
+
+	new_inverse_node = (inverse_node*)calloc(1, sizeof(inverse_node));
+	if(new_inverse_node == NULL)
 	{
-		printf("ERROR[%s]: Increase inverse mapping at MAX_LPN_CNT: ppn = %ld, lpn = %ld\n", __FUNCTION__, ppn, lpn);
+		printf("ERROR[%s] Alloc new inverse node fail\n", __FUNCTION__);
 		return FAIL;
 	}
 
-	for(i = 0; i < MAX_LPN_CNT; i++)
+	new_inverse_node->lpn = lpn;
+	new_inverse_node->pre = NULL;
+	new_inverse_node->next = NULL;
+
+	if(inverse_entry->lpn_cnt == 0)
 	{
-		if(inverse_entry->lpn[i] == -1)
-		{
-			inverse_entry->lpn[i] = lpn;
-			inverse_entry->lpn_cnt++;
-			// increase_debug_print(ssd, ppn, lpn, inverse_entry->lpn_cnt);
-			return SUCCESS;
-		}
+		inverse_entry->head = new_inverse_node;
+		inverse_entry->tail = new_inverse_node;
+		inverse_entry->lpn_cnt = 1;
+	}
+	else
+	{
+		inverse_entry->tail->next = new_inverse_node;
+		new_inverse_node->pre = inverse_entry->tail;	
+		inverse_entry->tail = new_inverse_node;
+		inverse_entry->lpn_cnt++;
 	}
 
-	printf("ERROR[%s]: Increase inverse mapping ---FAIL---: ppn = %ld, lpn = %ld\n", __FUNCTION__, ppn, lpn);
-	return FAIL;
+	return SUCCESS;
+	
 }
 
 int DECREASE_INVERSE_MAPPING(struct ssdstate *ssd, int64_t ppn, int64_t lpn)
@@ -860,7 +882,8 @@ int DECREASE_INVERSE_MAPPING(struct ssdstate *ssd, int64_t ppn, int64_t lpn)
 		return FAIL;
 	}
 	
-	inverse_mapping_entry* inverse_entry = (inverse_mapping_entry*)inverse_mapping_table + ppn;
+	inverse_mapping_entry *inverse_entry = (inverse_mapping_entry*)inverse_mapping_table + ppn;
+	inverse_node *victim_inverse_node;
 
 	if(inverse_entry->lpn_cnt == 0)
 	{
@@ -868,19 +891,59 @@ int DECREASE_INVERSE_MAPPING(struct ssdstate *ssd, int64_t ppn, int64_t lpn)
 		return FAIL;
 	}
 
-	for(i = 0; i < MAX_LPN_CNT; i++)
+	// for(i = 0; i < MAX_LPN_CNT; i++)
+	// {
+	// 	if(inverse_entry->lpn[i] == lpn)
+	// 	{
+	// 		inverse_entry->lpn[i] = -1;
+	// 		inverse_entry->lpn_cnt--;
+	// 		// decrease_debug_print(ssd, ppn, lpn, inverse_entry->lpn_cnt);
+	// 		return SUCCESS;
+	// 	}
+	// }
+
+	// printf("ERROR[%s]: Decrease inverse mapping ---FAIL---: ppn = %ld, lpn = %ld\n", __FUNCTION__, ppn, lpn);
+	// return FAIL;
+
+	victim_inverse_node = inverse_entry->head;
+	while(victim_inverse_node != NULL)
 	{
-		if(inverse_entry->lpn[i] == lpn)
-		{
-			inverse_entry->lpn[i] = -1;
-			inverse_entry->lpn_cnt--;
-			// decrease_debug_print(ssd, ppn, lpn, inverse_entry->lpn_cnt);
-			return SUCCESS;
-		}
+		if(lpn == victim_inverse_node->lpn)
+			break;
+		
+		victim_inverse_node = victim_inverse_node->next;
 	}
 
-	printf("ERROR[%s]: Decrease inverse mapping ---FAIL---: ppn = %ld, lpn = %ld\n", __FUNCTION__, ppn, lpn);
-	return FAIL;
+	if(victim_inverse_node == inverse_entry->head)
+	{
+		if(inverse_entry->lpn_cnt == 1)
+		{
+			inverse_entry->head = NULL;
+			inverse_entry->tail = NULL;
+		}
+		else
+		{
+			inverse_entry->head = victim_inverse_node->next;
+			inverse_entry->head->pre = NULL;
+		}
+	}
+	else if(victim_inverse_node == inverse_entry->tail)
+	{
+		inverse_entry->tail = victim_inverse_node->pre;
+		inverse_entry->tail->next = NULL;
+	}
+	else
+	{
+		victim_inverse_node->pre->next = victim_inverse_node->next;
+		victim_inverse_node->next->pre = victim_inverse_node->pre;
+	}
+	
+	inverse_entry->lpn_cnt--;
+
+	free(victim_inverse_node);
+	victim_inverse_node = NULL;
+
+	return SUCCESS;
 }
 
 
@@ -928,7 +991,8 @@ int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, un
 
 	if(valid == VALID)
 	{
-		if(valid_array[phy_page_nb] >= 0 && valid_array[phy_page_nb] < MAX_LPN_CNT)
+		// if(valid_array[phy_page_nb] >= 0 && valid_array[phy_page_nb] < MAX_LPN_CNT)
+		if(valid_array[phy_page_nb] >= 0)
 		{
 			if(valid_array[phy_page_nb] == 0)
 			{
@@ -950,7 +1014,8 @@ int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, un
 	}
 	else if(valid == INVALID)
 	{
-		if(valid_array[phy_page_nb] > 0 && valid_array[phy_page_nb] <= MAX_LPN_CNT)
+		// if(valid_array[phy_page_nb] > 0 && valid_array[phy_page_nb] <= MAX_LPN_CNT)
+		if(valid_array[phy_page_nb] > 0)
 		{
 			if(valid_array[phy_page_nb] == 1)
 			{
@@ -988,7 +1053,8 @@ int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, un
 	}
 	else if(valid == 0)
 	{
-		if(valid_array[phy_page_nb] > 0 && valid_array[phy_page_nb] <= MAX_LPN_CNT)
+		// if(valid_array[phy_page_nb] > 0 && valid_array[phy_page_nb] <= MAX_LPN_CNT)
+		if(valid_array[phy_page_nb] > 0)
 		{
 			ssd->stat_ppn_valid--;
 			if(valid_array[phy_page_nb] > 1)
@@ -1023,7 +1089,8 @@ int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, un
 	/* Update valid_page_nb */
 	for(i=0;i<PAGE_NB;i++)
 	{
-		if(valid_array[i] > 0 && valid_array[i] <= MAX_LPN_CNT)
+		// if(valid_array[i] > 0 && valid_array[i] <= MAX_LPN_CNT)
+		if(valid_array[i] > 0)
 		{
 			valid_count++;
 		}
@@ -1033,46 +1100,38 @@ int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, un
 	return SUCCESS;
 }
 
-int USE_REMAP(struct ssdstate *ssd, unsigned int phy_block_nb)
+int USE_REMAP(struct ssdstate *ssd)
 {
 	struct ssdconf *sc = &(ssd->ssdparams);
 	void* NVRAM_OOB_TABLE = ssd->NVRAM_OOB_TABLE;
-    int BLOCK_NB = sc->BLOCK_NB;
-	NVRAM_OOB_seg* OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE + phy_block_nb;
+	NVRAM_OOB_seg* OOB_seg;
 	double invalid_ratio = 0.0;
 	int count = 0;
 
-	if(phy_block_nb >= BLOCK_NB){
-		printf("ERROR[%s] Wrong physical address\n", __FUNCTION__);
-		return FAIL;
-	}
+	OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE;
 
-retry:
-
-	if(OOB_seg->free_entry > 0)
-		return SUCCESS;
-	
-	if(ssd->stat_total_alloc_seg < TOTAL_OOB_SEG)
+	if(OOB_seg->total_entry < MAX_ENTRY_NB)
 		return SUCCESS;
 
 	if(ssd->stat_total_OOB_entry > 0)
 		invalid_ratio = (double)(ssd->stat_total_invalid_entry) / (ssd->stat_total_OOB_entry);
 
-	if(ssd->stat_total_alloc_seg == TOTAL_OOB_SEG && invalid_ratio <= INVALID_ENTRY_THRE)
+	if(ssd->stat_total_OOB_entry == MAX_ENTRY_NB && invalid_ratio <= INVALID_ENTRY_THRE)
 		return FAIL;
 
-	if(ssd->stat_total_alloc_seg == TOTAL_OOB_SEG && invalid_ratio > INVALID_ENTRY_THRE)
+	while(ssd->stat_total_OOB_entry == MAX_ENTRY_NB && invalid_ratio > INVALID_ENTRY_THRE && count < 3)
 	{
-		if(count == BLOCK_NB);
-		{
-			printf("ERROR[%s] count == BLOCK_NB\n", __FUNCTION__);
-			return FAIL;
-		}
-		
 		NVRAM_OOB_GC(ssd);
 		count++;
 
-		goto retry;
+		if(ssd->stat_total_OOB_entry > 0)
+			invalid_ratio = (double)(ssd->stat_total_invalid_entry) / (ssd->stat_total_OOB_entry);
+		
+		if(count == 2)
+			printf("[%s] NVRAM GC count = %d\n", __FUNCTION__, count);
+		
+		if(OOB_seg->total_entry < MAX_ENTRY_NB)
+			return SUCCESS;
 	}
 
 	return FAIL;
@@ -1080,116 +1139,94 @@ retry:
 
 int NVRAM_OOB_GC(struct ssdstate *ssd)
 {
-	struct ssdconf *sc = &(ssd->ssdparams);
 	void* NVRAM_OOB_TABLE = ssd->NVRAM_OOB_TABLE;
-    int BLOCK_NB = sc->BLOCK_NB;
-	int max_invalid_entry_cnt = 0, victim_OOB_nb = 0, entry_nb = 0, valid_entry_nb = 0, i = 0;
+	int entry_nb = 0, valid_entry_nb = 0, i = 0;
 	NVRAM_OOB_seg* curr_OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE;
-	// int64_t NVRAM_OOB_rw_time;
+	int64_t NVRAM_OOB_rw_time;
 
-	// 选择无效条目最多的segments
-	for(i = 0; i < BLOCK_NB; i++, curr_OOB_seg++)
-	{
-		if(curr_OOB_seg->invalid_entry > max_invalid_entry_cnt)
-		{
-			max_invalid_entry_cnt = curr_OOB_seg->invalid_entry;
-			victim_OOB_nb = i;
-		}	
-	}
+	entry_nb = curr_OOB_seg->total_entry;
+	valid_entry_nb = entry_nb - curr_OOB_seg->invalid_entry;
 
-	curr_OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE + victim_OOB_nb;
-	entry_nb = curr_OOB_seg->alloc_seg * OOB_ENTRY_PER_SEG - curr_OOB_seg->free_entry;
-	valid_entry_nb = curr_OOB_seg->alloc_seg * OOB_ENTRY_PER_SEG - curr_OOB_seg->free_entry - curr_OOB_seg->invalid_entry;
-
-	UPDATE_NVRAM_OOB(ssd, victim_OOB_nb, 0);
+	UPDATE_NVRAM_OOB(ssd, 0);
 
 	// 写有效条目
 	for(i = 0; i < valid_entry_nb; i++)
 	{
-		if(curr_OOB_seg->free_entry == 0)
-		{
-			curr_OOB_seg->alloc_seg++;
-			curr_OOB_seg->free_entry = OOB_ENTRY_PER_SEG;
+		curr_OOB_seg->total_entry++;
 
-			ssd->stat_total_alloc_seg++;
-			ssd->stat_total_seg_bytes += OOB_ENTRY_PER_SEG * OOB_ENTRY_BYTES;
-		}
-
-		curr_OOB_seg->free_entry--;
 		ssd->stat_total_OOB_entry++;
+		ssd->stat_total_seg_bytes += OOB_ENTRY_BYTES;
 	}
-	
-	// NVRAM_OOB_rw_time = entry_nb * OOB_ENTRY_BYTES * NVRAM_READ_DELAY / 64 + valid_entry_nb * OOB_ENTRY_BYTES * NVRAM_WRITE_DELAY / 64;
 
-	// 推迟闪存块可获取时间点
-    // UPDATE_FLASH_TS(ssd, NVRAM_OOB_rw_time);
+// #ifdef STAT_COUNT
+//     ssd->stat_type = 5;
+//     stat_print(ssd);
+// #endif
+	
+	NVRAM_OOB_rw_time = (int64_t)entry_nb * OOB_ENTRY_BYTES * NVRAM_READ_DELAY / 64 + (int64_t)valid_entry_nb * OOB_ENTRY_BYTES * NVRAM_WRITE_DELAY / 64;
+	// printf("entry nb = %d, valid_entry_nb = %d, NVRAM_OOB_rw_time = %ld\n", entry_nb, valid_entry_nb, NVRAM_OOB_rw_time);
+
+	// 推迟NVRAM可获取时间点
+    UPDATE_NVRAM_TS(ssd, NVRAM_OOB_rw_time);
+
+	ssd->stat_NVRAMGC_print++;
+	ssd->stat_NVRAMGC_delay_print += NVRAM_OOB_rw_time;
+	ssd->stat_avg_NVRAMGC_delay = ssd->stat_NVRAMGC_delay_print / ssd->stat_NVRAMGC_print;
 
 	return SUCCESS;
 }
 
-int UPDATE_NVRAM_OOB(struct ssdstate *ssd, unsigned int phy_block_nb, int valid)
+int UPDATE_NVRAM_OOB(struct ssdstate *ssd, int valid)
 {
 	struct ssdconf *sc = &(ssd->ssdparams);
 	void* NVRAM_OOB_TABLE = ssd->NVRAM_OOB_TABLE;
-    int BLOCK_NB = sc->BLOCK_NB;
 	int entry_cnt = 0, seg_bytes = 0;
 
-	if(phy_block_nb >= BLOCK_NB){
-		printf("ERROR[%s] Wrong physical address\n", __FUNCTION__);
-		return FAIL;
-	}
-
-	NVRAM_OOB_seg* OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE + phy_block_nb;
+	NVRAM_OOB_seg* OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE;
 
 	if(valid == VALID)
 	{
-		if(OOB_seg->free_entry == 0)
-		{
-			OOB_seg->alloc_seg++;
-			OOB_seg->free_entry = OOB_ENTRY_PER_SEG;
-
-			ssd->stat_total_alloc_seg++;
-			ssd->stat_total_seg_bytes += OOB_ENTRY_PER_SEG * OOB_ENTRY_BYTES;
+		if(ssd->stat_total_OOB_entry == MAX_ENTRY_NB && ssd->stat_total_invalid_entry > 0)
+		{		
+			NVRAM_OOB_GC(ssd);
 		}
 
-		OOB_seg->free_entry--;
-		ssd->stat_total_OOB_entry++;
+		OOB_seg->total_entry++;
 
-		if(ssd->stat_total_alloc_seg > TOTAL_OOB_SEG)
+		ssd->stat_total_OOB_entry++;
+		ssd->stat_total_seg_bytes += OOB_ENTRY_BYTES;
+
+		if(ssd->stat_total_OOB_entry > MAX_ENTRY_NB)
 		{
-			printf("ERROR[%s] ssd->stat_total_alloc_seg > TOTAL_OOB_SEG\n", __FUNCTION__);
+			printf("ERROR[%s] ssd->stat_total_OOB_entry > MAX_ENTRY_NB\n", __FUNCTION__);
 		}
 	}
 	else if(valid == 0)
 	{
-		entry_cnt = OOB_seg->alloc_seg * OOB_ENTRY_PER_SEG - OOB_seg->free_entry;
-		seg_bytes = OOB_seg->alloc_seg * OOB_ENTRY_PER_SEG * OOB_ENTRY_BYTES;
-		
-		ssd->stat_total_alloc_seg -= OOB_seg->alloc_seg;
+		entry_cnt = OOB_seg->total_entry;
+		seg_bytes =entry_cnt * OOB_ENTRY_BYTES;
+
 		ssd->stat_total_OOB_entry -= entry_cnt;
 		ssd->stat_total_invalid_entry -= OOB_seg->invalid_entry;
 		ssd->stat_total_seg_bytes -= seg_bytes;
 
-		OOB_seg->alloc_seg = 0;
-		OOB_seg->free_entry = 0;
+		if(ssd->stat_total_OOB_entry != 0 || ssd->stat_total_invalid_entry != 0)
+		{
+			printf("ERROR[%s] ssd->stat_total_OOB_entry = %lu, ssd->stat_total_invalid_entry = %lu\n", __FUNCTION__, ssd->stat_total_OOB_entry, ssd->stat_total_invalid_entry);
+		}
+
+		OOB_seg->total_entry = 0;
 		OOB_seg->invalid_entry = 0;
 	}
 
 	return SUCCESS;
 }
 
-int INCREASE_INVALID_OOB_ENTRY_COUNT(struct ssdstate *ssd, unsigned int phy_block_nb)
+int INCREASE_INVALID_OOB_ENTRY_COUNT(struct ssdstate *ssd)
 {
-	struct ssdconf *sc = &(ssd->ssdparams);
 	void* NVRAM_OOB_TABLE = ssd->NVRAM_OOB_TABLE;
-    int BLOCK_NB = sc->BLOCK_NB;
 
-	if(phy_block_nb >= BLOCK_NB){
-		printf("ERROR[%s] Wrong physical address\n", __FUNCTION__);
-		return FAIL;
-	}
-
-	NVRAM_OOB_seg* OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE + phy_block_nb;
+	NVRAM_OOB_seg* OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE;
 
 	OOB_seg->invalid_entry++;
 	ssd->stat_total_invalid_entry++;
