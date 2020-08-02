@@ -210,7 +210,7 @@ struct ssdstate {
     int g_init; // = 0;
 
     int64_t *mapping_table;
-    int8_t *in_seg; // indicates a lpn is in the flash OOB (0) or the NVRAM segment (1)
+    int8_t *in_nvram; // indicates a lpn is in the flash OOB (0) or the NVRAM segment (1)
 
     int* reg_io_cmd;	// READ, WRITE, ERASE
     int* reg_io_type;	// SEQ, RAN, MERGE, GC, etc..
@@ -251,7 +251,7 @@ struct ssdstate {
 
     /* Statistic by WangShuai*/
     //Unit: Page
-    uint8_t stat_type;  // 1: gc 100, 2: discard, 3: r/w/gc 10s, 4: remap 10000 times
+    uint8_t stat_type;  // 1: gc 100, 2: discard, 3: r/w/gc 10s, 4: remap 10000 times, 5: NVRAM GC
 
     uint64_t stat_time;    //Used for printf.
     uint64_t stat_temp;    //Used for printf.
@@ -279,11 +279,21 @@ struct ssdstate {
     uint64_t stat_total_OOB_entry;
     uint64_t stat_total_invalid_entry;
     uint64_t stat_total_seg_bytes;
+    uint32_t stat_max_alloc_seg;
+    uint32_t stat_min_alloc_seg;
 
-    double stat_avg_write_delay;
-    double stat_write_req_print;
-    double stat_write_delay_print;
+    uint64_t stat_avg_write_delay;
+    uint32_t stat_write_req_print;
+    uint64_t stat_write_delay_print;
 
+    uint64_t stat_avg_GCRNVRAM_delay;
+    uint32_t stat_GCRNVRAM_print;
+    uint64_t stat_GCRNVRAM_delay_print;
+
+    uint64_t stat_avg_NVRAMGC_delay;
+    uint32_t stat_NVRAMGC_print;
+    uint64_t stat_NVRAMGC_delay_print;
+    
     /* Average IO Time */
     double avg_write_delay;
     double total_write_count;

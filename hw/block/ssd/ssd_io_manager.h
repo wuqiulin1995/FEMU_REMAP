@@ -34,7 +34,6 @@ int64_t SSD_PAGE_PARTIAL_WRITE(struct ssdstate *ssd, unsigned int old_flash_nb, 
 	unsigned int old_page_nb, unsigned new_flash_nb, \
 	unsigned int new_block_nb, unsigned int new_page_nb, \
 	nand_io_info* n_io_info);
-void UPDATE_FLASH_TS(struct ssdstate *ssd, int64_t block_to_ts);
 
 /* Channel Access Delay */
 int SSD_CH_ENABLE(struct ssdstate *ssd, int channel);
