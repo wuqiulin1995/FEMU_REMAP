@@ -586,6 +586,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 			{
 				ssd->stat_remap_cnt++;
 				ssd->stat_reduced_write++;
+				printf("Write the same data\n");
 				goto skip;
 			}
 		}
@@ -603,7 +604,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 			ssd->stat_reduced_write++;
 			//nothing to do
 		}
-		else if(flag == DEDUP_WRITE && h_ppn != -1 && USE_REMAP(ssd, CALC_BLOCK(ssd, h_ppn)))
+		else if(flag == DEDUP_WRITE && h_ppn != -1 && USE_REMAP(ssd, CALC_BLOCK(ssd, h_ppn)) == SUCCESS)
 		{
 			int64_t dedup_ppn = h_ppn;
 			// printf("DEDUP REMAP -- dst_lpn = %ld, dedup_ppn = %lld\n", lpn, dedup_ppn);
@@ -614,16 +615,21 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 
 				UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, dedup_ppn), CALC_BLOCK(ssd, dedup_ppn), CALC_PAGE(ssd, dedup_ppn), VALID);
 				UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, dedup_ppn), VALID);
-				ssd->in_seg[lpn] = 1;
+				cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, CALC_BLOCK(ssd, dedup_ppn), NVRAM_WRITE_DELAY/4);
+				
+				if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
+					max_need_to_emulate_tt = cur_need_to_emulate_tt;
+				}
 
 				UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
 				mapping_table[lpn] = dedup_ppn;
+				ssd->in_nvram[lpn] = 1;
 
 				ssd->stat_remap_cnt++;
 				ssd->stat_reduced_write++;
 			}
 		}
-		else if(flag == FS_GC_WRITE && h_ppn != -1 && USE_REMAP(ssd, CALC_BLOCK(ssd, h_ppn)))
+		else if(flag == FS_GC_WRITE && h_ppn != -1 && USE_REMAP(ssd, CALC_BLOCK(ssd, h_ppn)) == SUCCESS)
 		{
 			int64_t gc_ppn = h_ppn;
 			
@@ -634,11 +640,16 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 				// write_remap_print(ssd, write_page_nb, lpn, h_lpn);
 				UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, gc_ppn), CALC_BLOCK(ssd, gc_ppn), CALC_PAGE(ssd, gc_ppn), VALID);
 				UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, gc_ppn), VALID);
-				ssd->in_seg[lpn] = 1;
+				cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, CALC_BLOCK(ssd, gc_ppn), NVRAM_WRITE_DELAY/4);
+
+				if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
+					max_need_to_emulate_tt = cur_need_to_emulate_tt;
+				}
 
 				UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
 				mapping_table[lpn] = gc_ppn;
-
+				ssd->in_nvram[lpn] = 1;
+				
 				UPDATE_OLD_PAGE_MAPPING(ssd, h_lpn);
 				mapping_table[h_lpn] = -1;
 
@@ -701,7 +712,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 			
 			UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
 			UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, DATA_BLOCK);
-			ssd->in_seg[lpn] = 0;
+			ssd->in_nvram[lpn] = 0;
 #ifdef DUP_RATIO
 			ssd->fingerprint[fing] = new_ppn;
 			inverse_entry = GET_INVERSE_MAPPING_INFO(ssd, new_ppn);
@@ -722,10 +733,15 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 
 						UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), VALID);
 						UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, new_ppn), VALID);
-						ssd->in_seg[h_lpn] = 1;
+						cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, CALC_BLOCK(ssd, new_ppn), NVRAM_WRITE_DELAY/4);
+
+						if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
+							max_need_to_emulate_tt = cur_need_to_emulate_tt;
+						}
 
 						UPDATE_OLD_PAGE_MAPPING(ssd, h_lpn);
 						mapping_table[h_lpn] = new_ppn;
+						ssd->in_nvram[h_lpn] = 1;
 
 						// UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
 						// mapping_table[lpn] = -1;
