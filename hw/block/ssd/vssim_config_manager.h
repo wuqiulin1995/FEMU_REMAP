@@ -282,17 +282,17 @@ struct ssdstate {
     uint32_t stat_max_alloc_seg;
     uint32_t stat_min_alloc_seg;
 
-    double stat_avg_write_delay;
-    double stat_write_req_print;
-    double stat_write_delay_print;
+    uint64_t stat_avg_write_delay;
+    uint32_t stat_write_req_print;
+    uint64_t stat_write_delay_print;
 
-    double stat_avg_GCRNVRAM_delay;
-    double stat_GCRNVRAM_print;
-    double stat_GCRNVRAM_delay_print;
+    uint64_t stat_avg_GCRNVRAM_delay;
+    uint32_t stat_GCRNVRAM_print;
+    uint64_t stat_GCRNVRAM_delay_print;
 
-    double stat_avg_NVRAMGC_delay;
-    double stat_NVRAMGC_print;
-    double stat_NVRAMGC_delay_print;
+    uint64_t stat_avg_NVRAMGC_delay;
+    uint32_t stat_NVRAMGC_print;
+    uint64_t stat_NVRAMGC_delay_print;
 
     /* Average IO Time */
     double avg_write_delay;

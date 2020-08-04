@@ -135,7 +135,7 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 	// if(OOB_seg->alloc_seg > 0)
 	// {
 	// 	entry_nb = OOB_seg->alloc_seg * OOB_ENTRY_PER_SEG - OOB_seg->free_entry;
-	// 	NVRAM_OOB_read_time = entry_nb * OOB_ENTRY_BYTES * NVRAM_READ_DELAY / 64;
+	// 	NVRAM_OOB_read_time = (int64_t)entry_nb * OOB_ENTRY_BYTES * NVRAM_READ_DELAY / 64;
 	// blocking_time = UPDATE_NVRAM_TS(ssd, victim_phy_block_nb, NVRAM_OOB_read_time);
 	// }
 
@@ -163,7 +163,7 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 	// 	UPDATE_NVRAM_OOB(ssd, victim_phy_block_nb, 0);  // per superblock item
 
 	// 	ssd->stat_GCRNVRAM_print++;
-	// 	ssd->stat_GCRNVRAM_delay_print += (double)blocking_time;
+	// 	ssd->stat_GCRNVRAM_delay_print += blocking_time;
 	// 	ssd->stat_avg_GCRNVRAM_delay = ssd->stat_GCRNVRAM_delay_print / ssd->stat_GCRNVRAM_print;
 	// }
 

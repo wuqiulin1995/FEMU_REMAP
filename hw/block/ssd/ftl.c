@@ -815,7 +815,7 @@ skip:
 	} // while(remain > 0)
 
 	ssd->stat_write_req_print++;
-	ssd->stat_write_delay_print += (double)max_need_to_emulate_tt;
+	ssd->stat_write_delay_print += max_need_to_emulate_tt;
 	ssd->stat_avg_write_delay = ssd->stat_write_delay_print / ssd->stat_write_req_print;
 
     if (blocking_to > curtime) {
