@@ -1131,7 +1131,7 @@ int NVRAM_OOB_GC(struct ssdstate *ssd)
 		curr_OOB_seg->total_entry++;
 
 		ssd->stat_total_OOB_entry++;
-		ssd->stat_total_seg_bytes += OOB_ENTRY_BYTES;
+		// ssd->stat_total_seg_bytes += OOB_ENTRY_BYTES;
 	}
 
 // #ifdef STAT_COUNT
@@ -1162,7 +1162,7 @@ int UPDATE_NVRAM_OOB(struct ssdstate *ssd, int valid)
 		OOB_seg->total_entry++;
 
 		ssd->stat_total_OOB_entry++;
-		ssd->stat_total_seg_bytes += OOB_ENTRY_BYTES;
+		// ssd->stat_total_seg_bytes += OOB_ENTRY_BYTES;
 	}
 	else if(valid == 0)
 	{
@@ -1171,7 +1171,7 @@ int UPDATE_NVRAM_OOB(struct ssdstate *ssd, int valid)
 
 		ssd->stat_total_OOB_entry -= entry_cnt;
 		ssd->stat_total_invalid_entry -= OOB_seg->invalid_entry;
-		ssd->stat_total_seg_bytes -= seg_bytes;
+		// ssd->stat_total_seg_bytes -= seg_bytes;
 
 		OOB_seg->total_entry = 0;
 		OOB_seg->invalid_entry = 0;
