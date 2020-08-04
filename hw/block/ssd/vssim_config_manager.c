@@ -45,17 +45,17 @@ void INIT_STAT_COUNT(struct ssdstate *ssd)
 	ssd->stat_max_alloc_seg=0;
 	ssd->stat_min_alloc_seg=100;
 
-	ssd->stat_avg_write_delay=0.0;
-	ssd->stat_write_req_print=0.0;
-    ssd->stat_write_delay_print=0.0;
+	ssd->stat_avg_write_delay=0;
+	ssd->stat_write_req_print=0;
+    ssd->stat_write_delay_print=0;
 
-	ssd->stat_avg_GCRNVRAM_delay=0.0;
-    ssd->stat_GCRNVRAM_print=0.0;
-    ssd->stat_GCRNVRAM_delay_print=0.0;
+	ssd->stat_avg_GCRNVRAM_delay=0;
+    ssd->stat_GCRNVRAM_print=0;
+    ssd->stat_GCRNVRAM_delay_print=0;
 
-    ssd->stat_avg_NVRAMGC_delay=0.0;
-    ssd->stat_NVRAMGC_print=0.0;
-    ssd->stat_NVRAMGC_delay_print=0.0;
+    ssd->stat_avg_NVRAMGC_delay=0;
+    ssd->stat_NVRAMGC_print=0;
+    ssd->stat_NVRAMGC_delay_print=0;
 
 #ifdef STAT_COUNT
 	FILE *fout = NULL;
@@ -175,7 +175,7 @@ void stat_print(struct ssdstate *ssd)
 		getchar();
 	}
 
-	fprintf(fout, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %u, %u, %.1f, %.2f, %.1f, %.2f, %.1f, %.2f\n", 
+	fprintf(fout, "%d, %u, %u, %u, %u, %u, %u, %u, %u, %u, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %u, %u, %u, %lu, %u, %lu, %u, %lu\n", 
 		ssd->stat_type, 
 		ssd->stat_total_read_count, ssd->stat_total_write_count, ssd->stat_host_write_count,
 		ssd->stat_gc_count, ssd->stat_erase_count, ssd->stat_gc_write_count,
@@ -190,17 +190,17 @@ void stat_print(struct ssdstate *ssd)
 	
 	if(ssd->stat_type == 3)
 	{
-		ssd->stat_write_req_print=0.0;
-		ssd->stat_write_delay_print=0.0;
-		ssd->stat_avg_write_delay=0.0;
+		ssd->stat_write_req_print=0;
+		ssd->stat_write_delay_print=0;
+		ssd->stat_avg_write_delay=0;
 
-		ssd->stat_avg_GCRNVRAM_delay=0.0;
-		ssd->stat_GCRNVRAM_print=0.0;
-		ssd->stat_GCRNVRAM_delay_print=0.0;
+		ssd->stat_avg_GCRNVRAM_delay=0;
+		ssd->stat_GCRNVRAM_print=0;
+		ssd->stat_GCRNVRAM_delay_print=0;
 
-		ssd->stat_avg_NVRAMGC_delay=0.0;
-		ssd->stat_NVRAMGC_print=0.0;
-		ssd->stat_NVRAMGC_delay_print=0.0;
+		ssd->stat_avg_NVRAMGC_delay=0;
+		ssd->stat_NVRAMGC_print=0;
+		ssd->stat_NVRAMGC_delay_print=0;
 	}
 
 	ssd->stat_type=0;

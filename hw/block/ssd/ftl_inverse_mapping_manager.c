@@ -1116,6 +1116,7 @@ int USE_REMAP(struct ssdstate *ssd, unsigned int phy_block_nb)
     int BLOCK_NB = sc->BLOCK_NB;
 	NVRAM_OOB_seg* OOB_seg;
 	double invalid_ratio = 0.0;
+	int count = 0;
 
 	if(phy_block_nb >= BLOCK_NB){
 		printf("ERROR[%s] Wrong physical address\n", __FUNCTION__);
@@ -1132,9 +1133,31 @@ int USE_REMAP(struct ssdstate *ssd, unsigned int phy_block_nb)
 
 	if(ssd->stat_total_OOB_entry > 0)
 		invalid_ratio = (double)(ssd->stat_total_invalid_entry) / (ssd->stat_total_OOB_entry);
-
+	
 	if(ssd->stat_total_alloc_seg == TOTAL_OOB_SEG && invalid_ratio <= INVALID_ENTRY_THRE)
 		return FAIL;
+
+	while(ssd->stat_total_alloc_seg == TOTAL_OOB_SEG && invalid_ratio > INVALID_ENTRY_THRE && count <= BLOCK_NB)
+	{		
+		if(NVRAM_OOB_GC(ssd) == FAIL)
+			return FAIL;
+
+		count++;
+
+		if(ssd->stat_total_OOB_entry > 0)
+			invalid_ratio = (double)(ssd->stat_total_invalid_entry) / (ssd->stat_total_OOB_entry);
+
+		if(count == BLOCK_NB)
+			printf("[%s] NVRAM GC count = %d\n", __FUNCTION__, count);
+
+		if(OOB_seg->free_entry > 0)
+			return SUCCESS;
+
+		if(ssd->stat_total_alloc_seg < TOTAL_OOB_SEG)
+			return SUCCESS;
+	}
+
+	return FAIL;
 }
 
 int NVRAM_OOB_GC(struct ssdstate *ssd)
@@ -1194,13 +1217,13 @@ int NVRAM_OOB_GC(struct ssdstate *ssd)
 //     stat_print(ssd);
 // #endif
 	
-	NVRAM_OOB_rw_time = entry_nb * OOB_ENTRY_BYTES * NVRAM_READ_DELAY / 64 + valid_entry_nb * OOB_ENTRY_BYTES * NVRAM_WRITE_DELAY / 64;
+	NVRAM_OOB_rw_time = (int64_t)entry_nb * OOB_ENTRY_BYTES * NVRAM_READ_DELAY / 64 + (int64_t)valid_entry_nb * OOB_ENTRY_BYTES * NVRAM_WRITE_DELAY / 64;
 
 	// 推迟NVRAM可获取时间点
     UPDATE_NVRAM_TS(ssd, victim_OOB_nb, NVRAM_OOB_rw_time);
 
 	ssd->stat_NVRAMGC_print++;
-	ssd->stat_NVRAMGC_delay_print += (double)NVRAM_OOB_rw_time;
+	ssd->stat_NVRAMGC_delay_print += NVRAM_OOB_rw_time;
 	ssd->stat_avg_NVRAMGC_delay = ssd->stat_NVRAMGC_delay_print / ssd->stat_NVRAMGC_print;
 
 	return SUCCESS;
@@ -1212,7 +1235,6 @@ int UPDATE_NVRAM_OOB(struct ssdstate *ssd, unsigned int phy_block_nb, int valid)
 	void* NVRAM_OOB_TABLE = ssd->NVRAM_OOB_TABLE;
     int BLOCK_NB = sc->BLOCK_NB;
 	int entry_cnt = 0, seg_bytes = 0;
-	double invalid_ratio = 0.0;
 	int count = 0;
 
 	if(phy_block_nb >= BLOCK_NB){
@@ -1239,26 +1261,9 @@ int UPDATE_NVRAM_OOB(struct ssdstate *ssd, unsigned int phy_block_nb, int valid)
 		OOB_seg->free_entry--;
 		ssd->stat_total_OOB_entry++;
 
-		if(ssd->stat_total_OOB_entry > 0)
-			invalid_ratio = (double)(ssd->stat_total_invalid_entry) / (ssd->stat_total_OOB_entry);
-
-		while(ssd->stat_total_alloc_seg == TOTAL_OOB_SEG && invalid_ratio > INVALID_ENTRY_THRE && count < BLOCK_NB)
-		{		
-			if(NVRAM_OOB_GC(ssd) == FAIL)
-				return FAIL;
-
-			count++;
-
-			if(ssd->stat_total_OOB_entry > 0)
-				invalid_ratio = (double)(ssd->stat_total_invalid_entry) / (ssd->stat_total_OOB_entry);
-
-			if(count == BLOCK_NB-1)
-				printf("[%s] NVRAM GC count = %d\n", __FUNCTION__, count);
-		}
-
 		if(ssd->stat_total_alloc_seg > TOTAL_OOB_SEG)
 		{
-			printf("ERROR[%s] ssd->stat_total_alloc_seg > TOTAL_OOB_SEG\n", __FUNCTION__);
+			printf("[%s] ssd->stat_total_alloc_seg > TOTAL_OOB_SEG\n", __FUNCTION__);
 		}
 	}
 	else if(valid == 0)

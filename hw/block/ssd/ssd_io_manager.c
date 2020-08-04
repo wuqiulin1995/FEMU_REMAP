@@ -304,6 +304,7 @@ void UPDATE_FLASH_TS(struct ssdstate *ssd, int64_t need_time)
 	{
 		if(chip_next_avail_time[i] < now + need_time)
 		{
+			printf("[%s] chip %d\n", __FUNCTION__, i);
 			chip_next_avail_time[i] = now + need_time;
 		}
 	}
