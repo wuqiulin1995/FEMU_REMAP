@@ -542,6 +542,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 	int64_t h_ppn = -1;
 	double data;
 	int64_t fing = 0; // LPN指纹，按照zipf分布pick
+	int64_t low = 0, high = UNIQUE_PAGE_NB, mid;
 	inverse_mapping_entry* inverse_entry;
 
     /* 
@@ -570,12 +571,34 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 #ifdef DUP_RATIO
 		fing = 0;
 		srand((unsigned int)get_usec());
-		// data = (double)rand()/RAND_MAX;
-		// while(data > ssd->Pzipf[fing])
-		// {
-		// 	fing++;
-		// }
-		fing = rand()%UNIQUE_PAGE_NB + 1;
+		data = (double)rand()/RAND_MAX;
+		low = 0;
+		high = UNIQUE_PAGE_NB;
+		while (low < high)
+		{
+			mid = low + (high-low+1)/2;
+
+			if (data <= ssd->Pzipf[mid]) 
+			{
+				if (data > ssd->Pzipf[mid-1])
+				{
+					fing = mid;
+					break;
+				}
+
+				high = mid-1;
+			} 
+			else 
+			{
+				low = mid;
+			}
+		}
+		if(fing == 0)
+		{
+			printf("ERROR[%s] fing = 0, data = %f\n", __FUNCTION__, data);
+		}
+
+		// fing = rand()%UNIQUE_PAGE_NB + 1;
 
 		h_ppn = ssd->fingerprint[fing];
 		if(h_ppn != -1)
@@ -704,9 +727,12 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 			UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, DATA_BLOCK);
 			ssd->in_nvram[lpn] = 0;
 #ifdef DUP_RATIO
-			ssd->fingerprint[fing] = new_ppn;
-			inverse_entry = GET_INVERSE_MAPPING_INFO(ssd, new_ppn);
-			inverse_entry->fingerprint = fing;
+			if(fing > 0)
+			{
+				ssd->fingerprint[fing] = new_ppn;
+				inverse_entry = GET_INVERSE_MAPPING_INFO(ssd, new_ppn);
+				inverse_entry->fingerprint = fing;
+			}
 #endif
 
 			// write_debug_print(ssd, lpn, new_ppn, old_ppn);
