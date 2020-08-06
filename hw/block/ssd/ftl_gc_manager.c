@@ -272,6 +272,11 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 #ifdef DUP_RATIO
 					fing = inverse_entry->fingerprint;
 					inverse_entry->fingerprint = -1;
+					
+					if(fing < 1 || fing > UNIQUE_PAGE_NB)
+					{
+						printf("ERROR[%s]: fing < 1 || fing > UNIQUE_PAGE_NB, %d\n", __FUNCTION__, fing);
+					}
 
 					ssd->fingerprint[fing] = new_ppn;
 					inverse_entry = GET_INVERSE_MAPPING_INFO(ssd, new_ppn);
@@ -675,6 +680,11 @@ printf("[%s] Start GC, current empty block: %ld\n", __FUNCTION__, total_empty_bl
 #ifdef DUP_RATIO
 					fing = inverse_entry->fingerprint;
 					inverse_entry->fingerprint = -1;
+
+					if(fing < 1 || fing > UNIQUE_PAGE_NB)
+					{
+						printf("ERROR[%s]: fing < 1 || fing > UNIQUE_PAGE_NB, %d\n", __FUNCTION__, fing);
+					}
 
 					ssd->fingerprint[fing] = new_ppn;
 					inverse_entry = GET_INVERSE_MAPPING_INFO(ssd, new_ppn);

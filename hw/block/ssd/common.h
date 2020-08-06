@@ -34,6 +34,13 @@
 
 #define DUP_RATIO 10  // 10% duplicate data
 #define UNIQUE_PAGE_NB 5850000 // lpn_valid (6500000) * (100 - dup_ratio) / 100
+
+#ifdef DUP_RATIO
+#define FING_DELAY 0 // 指纹计算延时 32000ns
+#else
+#define FING_DELAY 0 // 指纹计算延时 ns
+#endif
+
 #define DEDUP_WRITE 103
 #define FS_GC_WRITE 104
 
@@ -49,7 +56,7 @@
 #define STAT_COUNT
 
 #ifdef STAT_COUNT
-#define STAT_OUTPUT_FILE ("/home/nvm/stat_dedup_remap_seg4_oltp_ext4.csv")
+#define STAT_OUTPUT_FILE ("/home/nvm/stat_dedup_remap_seg4_rocksdb_ext4.csv")
 #define PRINT_INTERVAL 10	//输出的时间间隔（秒）
 #endif
 

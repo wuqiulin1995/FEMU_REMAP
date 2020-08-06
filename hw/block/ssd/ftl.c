@@ -542,6 +542,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 	int64_t h_ppn = -1;
 	double data;
 	int64_t fing = 0; // LPN指纹，按照zipf分布pick
+	int64_t low = 0, high = UNIQUE_PAGE_NB, mid;
 	inverse_mapping_entry* inverse_entry;
 
     /* 
@@ -570,12 +571,34 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 #ifdef DUP_RATIO
 		fing = 0;
 		srand((unsigned int)get_usec());
-		// data = (double)rand()/RAND_MAX;
-		// while(data > ssd->Pzipf[fing])
-		// {
-		// 	fing++;
-		// }
-		fing = rand()%UNIQUE_PAGE_NB + 1;
+		data = (double)rand()/RAND_MAX;
+		low = 0;
+		high = UNIQUE_PAGE_NB;
+		while (low < high)
+		{
+			mid = low + (high-low+1)/2;
+
+			if (data <= ssd->Pzipf[mid]) 
+			{
+				if (data > ssd->Pzipf[mid-1])
+				{
+					fing = mid;
+					break;
+				}
+
+				high = mid-1;
+			} 
+			else 
+			{
+				low = mid;
+			}
+		}
+		if(fing == 0)
+		{
+			printf("ERROR[%s] fing = 0, data = %f\n", __FUNCTION__, data);
+		}
+
+		// fing = rand()%UNIQUE_PAGE_NB + 1;
 
 		h_ppn = ssd->fingerprint[fing];
 		if(h_ppn != -1)
@@ -615,7 +638,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 
 				UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, dedup_ppn), CALC_BLOCK(ssd, dedup_ppn), CALC_PAGE(ssd, dedup_ppn), VALID);
 				UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, dedup_ppn), VALID);
-				cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, CALC_BLOCK(ssd, dedup_ppn), NVRAM_WRITE_DELAY/4);
+				cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, CALC_BLOCK(ssd, dedup_ppn), NVRAM_WRITE_DELAY/4) + FING_DELAY;
 				
 				if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
 					max_need_to_emulate_tt = cur_need_to_emulate_tt;
@@ -640,7 +663,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 				// write_remap_print(ssd, write_page_nb, lpn, h_lpn);
 				UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, gc_ppn), CALC_BLOCK(ssd, gc_ppn), CALC_PAGE(ssd, gc_ppn), VALID);
 				UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, gc_ppn), VALID);
-				cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, CALC_BLOCK(ssd, gc_ppn), NVRAM_WRITE_DELAY/4);
+				cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, CALC_BLOCK(ssd, gc_ppn), NVRAM_WRITE_DELAY/4) + FING_DELAY;
 
 				if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
 					max_need_to_emulate_tt = cur_need_to_emulate_tt;
@@ -698,10 +721,10 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 				cur_need_to_emulate_tt = SSD_PAGE_PARTIAL_WRITE(ssd,
 					CALC_FLASH(ssd, old_ppn), CALC_BLOCK(ssd, old_ppn), CALC_PAGE(ssd, old_ppn),
 					CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn),
-					n_io_info);
+					n_io_info) + FING_DELAY;
 			}
 			else{
-				cur_need_to_emulate_tt = SSD_PAGE_WRITE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), n_io_info);
+				cur_need_to_emulate_tt = SSD_PAGE_WRITE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), n_io_info) + FING_DELAY;
 			}
 
 			if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
@@ -714,9 +737,12 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 			UPDATE_NEW_PAGE_MAPPING(ssd, lpn, new_ppn, DATA_BLOCK);
 			ssd->in_nvram[lpn] = 0;
 #ifdef DUP_RATIO
-			ssd->fingerprint[fing] = new_ppn;
-			inverse_entry = GET_INVERSE_MAPPING_INFO(ssd, new_ppn);
-			inverse_entry->fingerprint = fing;
+			if(fing > 0)
+			{
+				ssd->fingerprint[fing] = new_ppn;
+				inverse_entry = GET_INVERSE_MAPPING_INFO(ssd, new_ppn);
+				inverse_entry->fingerprint = fing;
+			}
 #endif
 
 			// write_debug_print(ssd, lpn, new_ppn, old_ppn);
@@ -733,7 +759,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 
 						UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), VALID);
 						UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, new_ppn), VALID);
-						cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, CALC_BLOCK(ssd, new_ppn), NVRAM_WRITE_DELAY/4);
+						cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, CALC_BLOCK(ssd, new_ppn), NVRAM_WRITE_DELAY/4) + FING_DELAY;
 
 						if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
 							max_need_to_emulate_tt = cur_need_to_emulate_tt;
@@ -762,7 +788,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 					}
 					old_ppn_xl2p = ssd->xl2p_ppn;
 
-					cur_need_to_emulate_tt = SSD_PAGE_WRITE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), n_io_info);
+					cur_need_to_emulate_tt = SSD_PAGE_WRITE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), n_io_info) + FING_DELAY;
 					if (cur_need_to_emulate_tt > max_need_to_emulate_tt) 
 					{
 						max_need_to_emulate_tt = cur_need_to_emulate_tt;
