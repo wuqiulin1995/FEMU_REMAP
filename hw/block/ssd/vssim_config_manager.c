@@ -38,6 +38,8 @@ void INIT_STAT_COUNT(struct ssdstate *ssd)
 
 	ssd->stat_lpn_valid=0;
 
+	ssd->max_valid_array=0;
+
 	ssd->stat_total_alloc_seg=1;
 	ssd->stat_total_OOB_entry=0;
 	ssd->stat_total_invalid_entry=0;
@@ -48,6 +50,8 @@ void INIT_STAT_COUNT(struct ssdstate *ssd)
 	ssd->stat_avg_write_delay=0;
 	ssd->stat_write_req_print=0;
     ssd->stat_write_delay_print=0;
+	ssd->stat_min_write_delay = 10000000000;
+	ssd->stat_max_write_delay = 0;
 
 	ssd->stat_avg_GCRNVRAM_delay=0;
     ssd->stat_GCRNVRAM_print=0;
@@ -68,7 +72,7 @@ void INIT_STAT_COUNT(struct ssdstate *ssd)
 	fprintf(fout, "stat_type, total page read, total page write, host page write, gc count, \\
 	erase block, gc write, remap cnt, commit cnt, reduced (cp||dedup||gc), ppn valid, ppn n21, \\
 	ppn invalid, ppn free, lpn vallid, total alloc seg, total OOB entry, total invalid entry, total seg bytes, min alloc segs, max alloc segs, \\
-	write req between print, avg write delay, GCRNVRAM between print, avg GCRNVRAM delay, NVRAMGC between print, avg NVRAMGC delay\n");
+	write req between print, avg write delay, min write delay, max write delay, GCRNVRAM between print, avg GCRNVRAM delay, NVRAMGC between print, avg NVRAMGC delay, max ref cnt\n");
 	fclose(fout);
 #endif //STAT_COUNT
 
@@ -175,15 +179,15 @@ void stat_print(struct ssdstate *ssd)
 		getchar();
 	}
 
-	fprintf(fout, "%d, %u, %u, %u, %u, %u, %u, %u, %u, %u, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %u, %u, %u, %lu, %u, %lu, %u, %lu\n", 
+	fprintf(fout, "%d, %u, %u, %u, %u, %u, %u, %u, %u, %u, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %u, %u, %u, %lu, %lu, %lu, %u, %lu, %u, %lu, %d\n", 
 		ssd->stat_type, 
 		ssd->stat_total_read_count, ssd->stat_total_write_count, ssd->stat_host_write_count,
 		ssd->stat_gc_count, ssd->stat_erase_count, ssd->stat_gc_write_count,
 		ssd->stat_remap_cnt, ssd->stat_commit_cnt, ssd->stat_reduced_write, 
 		ssd->stat_ppn_valid, ssd->stat_ppn_n21, ssd->stat_ppn_invalid, ssd->stat_ppn_free, 
 		ssd->stat_lpn_valid, ssd->stat_total_alloc_seg,	ssd->stat_total_OOB_entry, 
-		ssd->stat_total_invalid_entry, ssd->stat_total_seg_bytes, ssd->stat_min_alloc_seg, ssd->stat_max_alloc_seg, ssd->stat_write_req_print, ssd->stat_avg_write_delay, 
-		ssd->stat_GCRNVRAM_print, ssd->stat_avg_GCRNVRAM_delay, ssd->stat_NVRAMGC_print, ssd->stat_avg_NVRAMGC_delay);
+		ssd->stat_total_invalid_entry, ssd->stat_total_seg_bytes, ssd->stat_min_alloc_seg, ssd->stat_max_alloc_seg, ssd->stat_write_req_print, ssd->stat_avg_write_delay, ssd->stat_min_write_delay, ssd->stat_max_write_delay,
+		ssd->stat_GCRNVRAM_print, ssd->stat_avg_GCRNVRAM_delay, ssd->stat_NVRAMGC_print, ssd->stat_avg_NVRAMGC_delay, ssd->max_valid_array);
 	
 	fflush(fout);
 	fclose(fout);
@@ -193,6 +197,8 @@ void stat_print(struct ssdstate *ssd)
 		ssd->stat_write_req_print=0;
 		ssd->stat_write_delay_print=0;
 		ssd->stat_avg_write_delay=0;
+		ssd->stat_min_write_delay = 10000000000;
+		ssd->stat_max_write_delay = 0;
 
 		ssd->stat_avg_GCRNVRAM_delay=0;
 		ssd->stat_GCRNVRAM_print=0;
