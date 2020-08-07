@@ -84,7 +84,7 @@ void INIT_NVRAM_OOB(struct ssdstate *ssd)
 void INIT_zipf_AND_fingerprint(struct ssdstate *ssd)
 {
 	int i;
-	double a = 0.4, sum = 0.0;
+	double a = 0.2, sum = 0.0;
 
 	ssd->Pzipf = (double*)calloc(UNIQUE_PAGE_NB+1, sizeof(double));
 	ssd->fingerprint = (int64_t*)calloc(UNIQUE_PAGE_NB+1, sizeof(int64_t));
@@ -523,7 +523,7 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
 					}
 					else
 					{
-						printf("ERROR[%s]: Plane!=0, but head == NULL");
+						printf("ERROR[%s]: Plane!=0, but head == NULL", __FUNCTION__);
 					}	
 				}				
 			}
@@ -556,7 +556,7 @@ empty_block_entry* GET_EMPTY_BLOCK(struct ssdstate *ssd, int mode, int mapping_i
 					{
 						ssd->empty_block_table_index++;
 						if(ssd->empty_block_table_index == EMPTY_TABLE_ENTRY_NB){
-							printf("ERROR[%s]: This cannot happen!\n");
+							printf("ERROR[%s]: This cannot happen!\n", __FUNCTION__);
 							ssd->empty_block_table_index = 0;
 						}
 					}
@@ -1013,6 +1013,8 @@ int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, un
 				ssd->stat_ppn_n21++;
 			}
 			valid_array[phy_page_nb]++;
+			if(valid_array[phy_page_nb] > ssd->max_valid_array)
+				ssd->max_valid_array = valid_array[phy_page_nb];
 			ssd->stat_lpn_valid++;
 		}
 		else
@@ -1032,6 +1034,7 @@ int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, un
 				ssd->stat_ppn_valid--;
 				valid_array[phy_page_nb] = -1;
 
+#ifdef DUP_RATIO
 				inverse_entry = GET_INVERSE_MAPPING_INFO(ssd, ppn);
 				fing = inverse_entry->fingerprint;
                 if(inverse_entry->lpn_cnt != 0)
@@ -1043,6 +1046,7 @@ int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, un
 					printf("ERROR[%s]: fing < 1 || fing > UNIQUE_PAGE_NB, %d\n", __FUNCTION__, fing);
 				}
                 ssd->fingerprint[fing] = -1;
+#endif
 			}
 			else
 			{
