@@ -49,7 +49,7 @@
 #define STAT_COUNT
 
 #ifdef STAT_COUNT
-#define STAT_OUTPUT_FILE ("/home/nvm/stat_dedup_base_fiorandw_ext4.csv")
+#define STAT_OUTPUT_FILE ("/home/nvm/dedup_base_fiorandw.csv")
 #define PRINT_INTERVAL 10	//输出的时间间隔（秒）
 #endif
 
