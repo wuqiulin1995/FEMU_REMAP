@@ -1139,12 +1139,18 @@ int USE_REMAP(struct ssdstate *ssd, unsigned int phy_block_nb)
 		invalid_ratio = (double)(ssd->stat_total_invalid_entry) / (ssd->stat_total_OOB_entry);
 	
 	if(ssd->stat_total_alloc_seg == TOTAL_OOB_SEG && invalid_ratio <= INVALID_ENTRY_THRE)
+	{
+		ssd->stat_use_remap_fail++;
 		return FAIL;
+	}
 
 	while(ssd->stat_total_alloc_seg == TOTAL_OOB_SEG && invalid_ratio > INVALID_ENTRY_THRE && count <= BLOCK_NB)
 	{		
 		if(NVRAM_OOB_GC(ssd) == FAIL)
+		{
+			ssd->stat_use_remap_fail++;
 			return FAIL;
+		}
 
 		count++;
 
@@ -1161,6 +1167,7 @@ int USE_REMAP(struct ssdstate *ssd, unsigned int phy_block_nb)
 			return SUCCESS;
 	}
 
+	ssd->stat_use_remap_fail++;
 	return FAIL;
 }
 
