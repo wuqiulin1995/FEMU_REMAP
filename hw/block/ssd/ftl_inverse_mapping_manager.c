@@ -1121,7 +1121,10 @@ int USE_REMAP(struct ssdstate *ssd)
 		invalid_ratio = (double)(ssd->stat_total_invalid_entry) / (ssd->stat_total_OOB_entry);
 
 	if(ssd->stat_total_OOB_entry == MAX_ENTRY_NB && invalid_ratio <= INVALID_ENTRY_THRE)
+	{
+		ssd->stat_use_remap_fail++;
 		return FAIL;
+	}
 
 	while(ssd->stat_total_OOB_entry == MAX_ENTRY_NB && invalid_ratio > INVALID_ENTRY_THRE && count < 3)
 	{
@@ -1138,6 +1141,7 @@ int USE_REMAP(struct ssdstate *ssd)
 			return SUCCESS;
 	}
 
+	ssd->stat_use_remap_fail++;
 	return FAIL;
 }
 

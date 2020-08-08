@@ -21,9 +21,9 @@
 #define DATA_BITS_NVME 12
 #define PI_BYTES_NVME 24
 
-// #define TOTAL_OOB_SEG 16384 // 40MB NVRAM 
-// #define OOB_ENTRY_PER_SEG 160   // 640 / 4
-#define MAX_ENTRY_NB 5242880 // 80MB NVRAM 
+// #define TOTAL_OOB_SEG 10240 // 40MB NVRAM 
+// #define OOB_ENTRY_PER_SEG 256   // 4KB segment
+#define MAX_ENTRY_NB 2621440 // 40MB NVRAM 
 #define OOB_ENTRY_BYTES 16
 #define INVALID_ENTRY_THRE 0.05 // 无效条目大于总条目的5%可做NVRAM GC
 #define NVRAM_READ_DELAY 50 // 50ns / 64B (PCM)
@@ -34,7 +34,7 @@
 #define CP_WRITE 102
 
 #define DUP_RATIO 10  // 10% duplicate data
-#define UNIQUE_PAGE_NB 5850000 // lpn_valid (6500000) * (100 - dup_ratio) / 100
+#define UNIQUE_PAGE_NB 5850000 // lpn_valid * (100 - dup_ratio) / 100
 
 #ifdef DUP_RATIO
 #define FING_DELAY 32000 // 指纹计算延时 32000ns
@@ -57,8 +57,8 @@
 #define STAT_COUNT
 
 #ifdef STAT_COUNT
-#define STAT_OUTPUT_FILE ("/home/nvm/stat_dedup_remap_log_fiorandw_ext4.csv")
-#define PRINT_INTERVAL 10	//输出的时间间隔（秒）
+#define STAT_OUTPUT_FILE ("/home/nvm/dedup_remap_log_40M_fiorandw.csv")
+#define PRINT_INTERVAL 5	//输出的时间间隔（秒）
 #endif
 
 #define SUPERBLOCK

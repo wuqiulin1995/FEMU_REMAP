@@ -274,8 +274,8 @@ struct ssdstate {
     uint64_t stat_ppn_free;
 
     uint64_t stat_lpn_valid;
-
     int32_t max_valid_array;
+    uint32_t stat_use_remap_fail;
     
     uint64_t stat_total_alloc_seg;
     uint64_t stat_total_OOB_entry;
@@ -289,6 +289,8 @@ struct ssdstate {
     uint64_t stat_write_delay_print;
     uint64_t stat_min_write_delay;
     uint64_t stat_max_write_delay;
+    uint64_t stat_req_size_print;
+	uint64_t stat_avg_req_size;
 
     uint64_t stat_avg_GCRNVRAM_delay;
     uint32_t stat_GCRNVRAM_print;
