@@ -21,7 +21,7 @@
 #define DATA_BITS_NVME 12
 #define PI_BYTES_NVME 24
 
-#define TOTAL_OOB_SEG 16384 // 40MB NVRAM 
+#define TOTAL_OOB_SEG 32768 // 40MB NVRAM 
 #define OOB_ENTRY_PER_SEG 160   // 640 / 4
 #define OOB_ENTRY_BYTES 16
 #define INVALID_ENTRY_THRE 0.05 // 无效条目大于总条目的5%可做NVRAM GC
