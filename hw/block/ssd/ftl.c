@@ -545,6 +545,8 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 	int64_t low = 0, high = UNIQUE_PAGE_NB, mid;
 	inverse_mapping_entry* inverse_entry;
 
+	srand((unsigned int)get_usec());
+
     /* 
      * Coperd: since the whole I/O submission path is single threaded, it's
      * safe to do this. "blocking_to" means the time we will block the
@@ -565,12 +567,12 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 		write_sects = SECTORS_PER_PAGE - left_skip - right_skip;
 		lpn = lba / (int64_t)SECTORS_PER_PAGE;
 
-		h_lpn = 0;
+		h_lpn = -1;
 		flag = 0;
+		h_ppn = -1
 
 #ifdef DUP_RATIO
 		fing = 0;
-		srand((unsigned int)get_usec());
 		data = (double)rand()/RAND_MAX;
 		low = 0;
 		high = UNIQUE_PAGE_NB;
@@ -824,6 +826,10 @@ skip:
 	ssd->stat_write_req_print++;
 	ssd->stat_write_delay_print += max_need_to_emulate_tt;
 	ssd->stat_avg_write_delay = ssd->stat_write_delay_print / ssd->stat_write_req_print;
+	if(ssd->stat_min_write_delay > max_need_to_emulate_tt)
+		ssd->stat_min_write_delay = max_need_to_emulate_tt;
+	if(ssd->stat_max_write_delay < max_need_to_emulate_tt)
+		ssd->stat_max_write_delay = max_need_to_emulate_tt;
 
     if (blocking_to > curtime) {
         ssd->nb_blocked_writes++;

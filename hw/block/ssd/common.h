@@ -36,11 +36,11 @@
 #define DUP_RATIO 10  // 10% duplicate data
 #define UNIQUE_PAGE_NB 5850000 // lpn_valid (6500000) * (100 - dup_ratio) / 100
 
-// #ifdef DUP_RATIO
-// #define FING_DELAY 0 // 指纹计算延时 32000ns
-// #else
-// #define FING_DELAY 0 // 指纹计算延时 ns
-// #endif
+#ifdef DUP_RATIO
+#define FING_DELAY 32000 // 指纹计算延时 32000ns
+#else
+#define FING_DELAY 0 // 指纹计算延时 ns
+#endif
 
 #define DEDUP_WRITE 103
 #define FS_GC_WRITE 104

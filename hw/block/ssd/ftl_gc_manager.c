@@ -129,21 +129,21 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 
 	int64_t cp_start = get_ts_in_ns();
 
-	for(victim_phy_flash_nb=0; victim_phy_flash_nb<SB_BLK_NB; victim_phy_flash_nb++)
-	{
-		b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, victim_phy_flash_nb, victim_phy_block_nb);
-		valid_array = b_s_entry->valid_array;
+	// for(victim_phy_flash_nb=0; victim_phy_flash_nb<SB_BLK_NB; victim_phy_flash_nb++)
+	// {
+	// 	b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, victim_phy_flash_nb, victim_phy_block_nb);
+	// 	valid_array = b_s_entry->valid_array;
 
-		for(i=0;i<PAGE_NB;i++)
-		{
-			// if(valid_array[i] > 0 && valid_array[i] <= MAX_LPN_CNT)
-			if(valid_array[i] > 0)
-			{	
-				n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_READ, -1, ssd->io_request_seq_nb);
-				SSD_PAGE_READ(ssd, victim_phy_flash_nb, victim_phy_block_nb, i, n_io_info);
-			}
-		}
-	}
+	// 	for(i=0;i<PAGE_NB;i++)
+	// 	{
+	// 		// if(valid_array[i] > 0 && valid_array[i] <= MAX_LPN_CNT)
+	// 		if(valid_array[i] > 0)
+	// 		{	
+	// 			n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_READ, -1, ssd->io_request_seq_nb);
+	// 			SSD_PAGE_READ(ssd, victim_phy_flash_nb, victim_phy_block_nb, i, n_io_info);
+	// 		}
+	// 	}
+	// }
 
     for(victim_phy_flash_nb=0; victim_phy_flash_nb<SB_BLK_NB; victim_phy_flash_nb++)
 	{
@@ -170,8 +170,8 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 				}
 		
 				/* Read a Valid Page from the Victim NAND Block */
-				// n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_READ, -1, ssd->io_request_seq_nb);
-				// SSD_PAGE_READ(ssd, victim_phy_flash_nb, victim_phy_block_nb, i, n_io_info);
+				n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_READ, -1, ssd->io_request_seq_nb);
+				SSD_PAGE_READ(ssd, victim_phy_flash_nb, victim_phy_block_nb, i, n_io_info);
 
 				/* Write the Valid Page*/
 				n_io_info = CREATE_NAND_IO_INFO(ssd, i, GC_WRITE, -1, ssd->io_request_seq_nb);
