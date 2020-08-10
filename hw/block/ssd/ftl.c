@@ -566,13 +566,13 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 		write_sects = SECTORS_PER_PAGE - left_skip - right_skip;
 		lpn = lba / (int64_t)SECTORS_PER_PAGE;
 
-		h_lpn = -1;
 		flag = 0;
-		h_ppn = -1
+		h_lpn = -1;
+		h_ppn = -1;
 
 #ifdef DUP_RATIO
 		fing = 0;
-		data = (double)rand()/RAND_MAX;
+		data = ((double)rand()+1)/((double)RAND_MAX+2);
 		low = 0;
 		high = UNIQUE_PAGE_NB;
 		while (low < high)
@@ -839,6 +839,10 @@ skip:
 	ssd->stat_write_req_print++;
 	ssd->stat_write_delay_print += max_need_to_emulate_tt;
 	ssd->stat_avg_write_delay = ssd->stat_write_delay_print / ssd->stat_write_req_print;
+
+	ssd->stat_req_size_print += length;
+	ssd->stat_avg_req_size = ssd->stat_req_size_print / ssd->stat_write_req_print;
+
 	if(ssd->stat_min_write_delay > max_need_to_emulate_tt)
 		ssd->stat_min_write_delay = max_need_to_emulate_tt;
 	if(ssd->stat_max_write_delay < max_need_to_emulate_tt)
