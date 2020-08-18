@@ -1129,43 +1129,37 @@ int USE_REMAP(struct ssdstate *ssd, unsigned int phy_block_nb)
 
 	OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE + phy_block_nb;
 
-	if(OOB_seg->free_entry > 0)
-		return SUCCESS;
-
-	if(ssd->stat_total_alloc_seg < TOTAL_OOB_SEG)
-		return SUCCESS;
-
-	if(ssd->stat_total_OOB_entry > 0)
-		invalid_ratio = (double)(ssd->stat_total_invalid_entry) / (ssd->stat_total_OOB_entry);
-	
-	if(ssd->stat_total_alloc_seg == TOTAL_OOB_SEG && invalid_ratio <= INVALID_ENTRY_THRE)
-	{
-		ssd->stat_use_remap_fail++;
-		return FAIL;
-	}
-
-	while(ssd->stat_total_alloc_seg == TOTAL_OOB_SEG && invalid_ratio > INVALID_ENTRY_THRE && count <= BLOCK_NB)
-	{		
-		if(NVRAM_OOB_GC(ssd) == FAIL)
-		{
-			ssd->stat_use_remap_fail++;
-			return FAIL;
-		}
-
-		count++;
-
-		if(ssd->stat_total_OOB_entry > 0)
-			invalid_ratio = (double)(ssd->stat_total_invalid_entry) / (ssd->stat_total_OOB_entry);
-
-		if(count == BLOCK_NB)
-			printf("[%s] NVRAM GC count = %d\n", __FUNCTION__, count);
-
+	do{
 		if(OOB_seg->free_entry > 0)
 			return SUCCESS;
 
 		if(ssd->stat_total_alloc_seg < TOTAL_OOB_SEG)
 			return SUCCESS;
-	}
+
+		if(ssd->stat_total_OOB_entry > 0)
+			invalid_ratio = (double)(ssd->stat_total_invalid_entry) / (ssd->stat_total_OOB_entry);
+
+		if(ssd->stat_total_alloc_seg >= TOTAL_OOB_SEG && invalid_ratio <= INVALID_ENTRY_THRE)
+		{
+			ssd->stat_use_remap_fail++;
+			return FAIL;
+		}
+
+		if(ssd->stat_total_alloc_seg >= TOTAL_OOB_SEG && invalid_ratio > INVALID_ENTRY_THRE)
+		{		
+			if(NVRAM_OOB_GC(ssd) == FAIL)
+			{
+				ssd->stat_use_remap_fail++;
+				return FAIL;
+			}
+
+			count++;
+
+			if(count == BLOCK_NB)
+				printf("[%s] NVRAM GC count = %d\n", __FUNCTION__, count);
+		}
+		
+	}while(count <= BLOCK_NB);
 
 	ssd->stat_use_remap_fail++;
 	return FAIL;
@@ -1257,6 +1251,11 @@ int UPDATE_NVRAM_OOB(struct ssdstate *ssd, unsigned int phy_block_nb, int valid)
 
 	if(valid == VALID)
 	{
+		if(OOB_seg->free_entry == 0 && ssd->stat_total_alloc_seg == TOTAL_OOB_SEG)
+		{
+			ssd->stat_gc_remap_fail++;
+		}
+
 		if(OOB_seg->free_entry == 0)
 		{
 			OOB_seg->alloc_seg++;
@@ -1272,10 +1271,10 @@ int UPDATE_NVRAM_OOB(struct ssdstate *ssd, unsigned int phy_block_nb, int valid)
 		OOB_seg->free_entry--;
 		ssd->stat_total_OOB_entry++;
 
-		if(ssd->stat_total_alloc_seg > TOTAL_OOB_SEG)
-		{
-			printf("[%s] ssd->stat_total_alloc_seg > TOTAL_OOB_SEG\n", __FUNCTION__);
-		}
+		// if(ssd->stat_total_alloc_seg > TOTAL_OOB_SEG)
+		// {
+		// 	printf("[%s] ssd->stat_total_alloc_seg > TOTAL_OOB_SEG\n", __FUNCTION__);
+		// }
 	}
 	else if(valid == 0)
 	{
