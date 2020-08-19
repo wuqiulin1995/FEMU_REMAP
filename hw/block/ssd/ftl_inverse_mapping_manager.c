@@ -1114,32 +1114,29 @@ int USE_REMAP(struct ssdstate *ssd)
 
 	OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE;
 
-	if(OOB_seg->total_entry < MAX_ENTRY_NB)
-		return SUCCESS;
-
-	if(ssd->stat_total_OOB_entry > 0)
-		invalid_ratio = (double)(ssd->stat_total_invalid_entry) / (ssd->stat_total_OOB_entry);
-
-	if(ssd->stat_total_OOB_entry == MAX_ENTRY_NB && invalid_ratio <= INVALID_ENTRY_THRE)
-	{
-		ssd->stat_use_remap_fail++;
-		return FAIL;
-	}
-
-	while(ssd->stat_total_OOB_entry == MAX_ENTRY_NB && invalid_ratio > INVALID_ENTRY_THRE && count < 3)
-	{
-		NVRAM_OOB_GC(ssd);
-		count++;
+	do{
+		if(OOB_seg->total_entry < MAX_ENTRY_NB)
+			return SUCCESS;
 
 		if(ssd->stat_total_OOB_entry > 0)
 			invalid_ratio = (double)(ssd->stat_total_invalid_entry) / (ssd->stat_total_OOB_entry);
-		
-		if(count == 2)
-			printf("[%s] NVRAM GC count = %d\n", __FUNCTION__, count);
-		
-		if(OOB_seg->total_entry < MAX_ENTRY_NB)
-			return SUCCESS;
-	}
+
+		if(ssd->stat_total_OOB_entry >= MAX_ENTRY_NB && invalid_ratio <= INVALID_ENTRY_THRE)
+		{
+			ssd->stat_use_remap_fail++;
+			return FAIL;
+		}
+
+		if(ssd->stat_total_OOB_entry >= MAX_ENTRY_NB && invalid_ratio > INVALID_ENTRY_THRE)
+		{
+			NVRAM_OOB_GC(ssd);
+			count++;
+			
+			if(count == 2)
+				printf("[%s] NVRAM GC count = %d\n", __FUNCTION__, count);
+		}
+
+	}while(count <= 2);
 
 	ssd->stat_use_remap_fail++;
 	return FAIL;
