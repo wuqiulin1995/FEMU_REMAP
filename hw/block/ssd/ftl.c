@@ -653,6 +653,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 
 				ssd->stat_remap_cnt++;
 				ssd->stat_reduced_write++;
+				ssd->stat_host_write_count++;
 			}
 		}
 		else if(flag == FS_GC_WRITE && h_ppn != -1 && USE_REMAP(ssd, CALC_BLOCK(ssd, h_ppn)) == SUCCESS)
@@ -756,6 +757,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 					if(INCREASE_INVERSE_MAPPING(ssd, new_ppn, h_lpn) == SUCCESS)
 					{
 						// write_remap_print(ssd, write_page_nb, lpn, h_lpn);
+						USE_REMAP(ssd, CALC_BLOCK(ssd, new_ppn));
 
 						UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), VALID);
 						UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, new_ppn), VALID);
@@ -814,11 +816,12 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 					printf("ERROR[%s] %d page write fail \n",__FUNCTION__, new_ppn);
 			}
 #endif
-		} 
-
-skip:
 
 		ssd->stat_host_write_count++;
+
+		} // flag != CP_WRITE ||  DEDUP_WRITE || FS_GC_WRITE
+
+skip:
 
 #ifdef STAT_COUNT
 		ssd->stat_temp = get_ts_in_ns();

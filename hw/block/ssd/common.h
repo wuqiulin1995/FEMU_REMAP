@@ -32,8 +32,8 @@
 #define WAL_WRITE 100
 #define CP_WRITE 102
 
-// #define DUP_RATIO 10  // 10% duplicate data
-#define UNIQUE_PAGE_NB 7380000 // lpn_valid * (100 - dup_ratio) / 100
+// #define DUP_RATIO 50  // 50% duplicate data
+#define UNIQUE_PAGE_NB 4200000 // lpn_valid * (100 - dup_ratio) / 100
 #define DEDUP_WRITE 103
 #define FS_GC_WRITE 104
 
@@ -49,7 +49,7 @@
 #define STAT_COUNT
 
 #ifdef STAT_COUNT
-#define STAT_OUTPUT_FILE ("/home/nvm/dedup_base_rocksdb.csv")
+#define STAT_OUTPUT_FILE ("/home/nvm/f2fsgc_base_mongodb.csv")
 #define PRINT_INTERVAL 5	//输出的时间间隔（秒）
 #endif
 
