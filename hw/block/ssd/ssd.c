@@ -461,6 +461,7 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
 
             if((INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS))
 			{
+                USE_REMAP(ssd);
                 UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);
                 UPDATE_NVRAM_OOB(ssd, VALID);
             
@@ -472,6 +473,7 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
 				// mapping_table[s_lpn] = -1;
 
 				ssd->stat_remap_cnt++;
+                ssd->stat_reduced_write++;
 			}
 
             s_lpn++;
@@ -488,6 +490,7 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
 
 			if(INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS)
 			{
+                USE_REMAP(ssd);
                 UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);
                 UPDATE_NVRAM_OOB(ssd, VALID);
 
@@ -496,6 +499,7 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
                 ssd->in_nvram[d_lpn] = 1;
 
 				ssd->stat_remap_cnt++;
+                ssd->stat_reduced_write++;
 			}
 
             s_lpn++;
@@ -512,6 +516,7 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
 
 			if(INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS)
 			{
+                USE_REMAP(ssd);
                 UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);
                 UPDATE_NVRAM_OOB(ssd, VALID);
 
@@ -523,6 +528,7 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
 				mapping_table[s_lpn] = -1;
 
 				ssd->stat_remap_cnt++;
+                ssd->stat_reduced_write++;
 			}
 
             s_lpn++;
