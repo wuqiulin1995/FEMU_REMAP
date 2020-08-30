@@ -79,6 +79,15 @@ void INIT_STAT_COUNT(struct ssdstate *ssd)
 	write req between print, avg write delay, avg write size, max write delay, max ref cnt\n");
 	
 	fclose(fout);
+
+	// fout = fopen("/home/nvm/write_remap.csv", "w");
+	// if(fout == NULL)
+	// {
+	// 	printf("Error: Output file open error\n");
+	// 	getchar();
+	// }
+	// fclose(fout);
+
 #endif //STAT_COUNT
 
     return;
@@ -87,7 +96,7 @@ void INIT_STAT_COUNT(struct ssdstate *ssd)
 void metadata_print(struct ssdstate *ssd, int32_t i, uint32_t tx_id, uint32_t flag, int64_t h_lpn)
 {
 	FILE *fout = NULL; 
-	fout = fopen("/home/b507/metadata.csv", "a");
+	fout = fopen("/home/nvm/metadata.csv", "a");
 	if(fout == NULL)
 	{
 		printf("Error: metadata file open error\n");
@@ -105,7 +114,7 @@ void metadata_print(struct ssdstate *ssd, int32_t i, uint32_t tx_id, uint32_t fl
 void write_debug_print(struct ssdstate *ssd, int64_t lpn, int64_t new_ppn, int64_t old_ppn)
 {
 	FILE *fout = NULL; 
-	fout = fopen("/home/b507/write_debug.csv", "a");
+	fout = fopen("/home/nvm/write_debug.csv", "a");
 	if(fout == NULL)
 	{
 		printf("Error: write debug file open error\n");
@@ -123,7 +132,7 @@ void write_debug_print(struct ssdstate *ssd, int64_t lpn, int64_t new_ppn, int64
 void write_remap_print(struct ssdstate *ssd, int32_t i, int64_t dst_lpn, int64_t h_lpn)
 {
 	FILE *fout = NULL; 
-	fout = fopen("/home/b507/write_remap.csv", "a");
+	fout = fopen("/home/nvm/write_remap.csv", "a");
 	if(fout == NULL)
 	{
 		printf("Error: write remap file open error\n");
@@ -141,7 +150,7 @@ void write_remap_print(struct ssdstate *ssd, int32_t i, int64_t dst_lpn, int64_t
 void decrease_debug_print(struct ssdstate *ssd, int64_t ppn, int64_t lpn, int32_t lpn_cnt)
 {
 	FILE *fout = NULL; 
-	fout = fopen("/home/b507/decrease_debug.csv", "a");
+	fout = fopen("/home/nvm/decrease_debug.csv", "a");
 	if(fout == NULL)
 	{
 		printf("Error: decrease debug file open error\n");
@@ -159,7 +168,7 @@ void decrease_debug_print(struct ssdstate *ssd, int64_t ppn, int64_t lpn, int32_
 void increase_debug_print(struct ssdstate *ssd, int64_t ppn, int64_t lpn, int32_t lpn_cnt)
 {
 	FILE *fout = NULL; 
-	fout = fopen("/home/b507/increase_debug.csv", "a");
+	fout = fopen("/home/nvm/increase_debug.csv", "a");
 	if(fout == NULL)
 	{
 		printf("Error: increase debug file open error\n");
