@@ -21,8 +21,8 @@
 #define DATA_BITS_NVME 12
 #define PI_BYTES_NVME 24
 
-#define TOTAL_OOB_SEG 10240 // 40MB NVRAM
-#define OOB_ENTRY_PER_SEG 256   // 4KB segment
+#define TOTAL_OOB_SEG 81920 // 80MB NVRAM
+#define OOB_ENTRY_PER_SEG 64   // 8KB segment
 #define OOB_ENTRY_BYTES 16
 #define INVALID_ENTRY_THRE 0.05 // 无效条目大于总条目的5%可做NVRAM GC
 #define NVRAM_READ_DELAY 50 // 50ns / 64B (PCM)
@@ -32,8 +32,8 @@
 #define WAL_WRITE 100
 #define CP_WRITE 102
 
-#define DUP_RATIO 10  // 10% duplicate data
-#define UNIQUE_PAGE_NB 7560000 // lpn_valid * (100 - dup_ratio) / 100
+// #define DUP_RATIO 50  // 50% duplicate data
+#define UNIQUE_PAGE_NB 4200000 // lpn_valid * (100 - dup_ratio) / 100
 
 #ifdef DUP_RATIO
 #define FING_DELAY 32000 // 指纹计算延时 32000ns
@@ -56,7 +56,7 @@
 #define STAT_COUNT
 
 #ifdef STAT_COUNT
-#define STAT_OUTPUT_FILE ("/home/nvm/dedup_remap_seg4K_40M_fileserver.csv")
+#define STAT_OUTPUT_FILE ("/home/nvm/f2fsgc_remap_seg1K_80M_fileserver.csv")
 #define PRINT_INTERVAL 5	//输出的时间间隔（秒）
 #endif
 
