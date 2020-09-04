@@ -75,7 +75,7 @@ void INIT_STAT_COUNT(struct ssdstate *ssd)
 	// ppn invalid, ppn free, lpn vallid, total alloc seg, total OOB entry, total invalid entry, total seg bytes, min alloc segs, max alloc segs, \\
 	// write req between print, avg write delay, min write delay, max write delay, GCRNVRAM between print, avg GCRNVRAM delay, NVRAMGC between print, avg NVRAMGC delay, max ref cnt\n");
 	
-	fprintf(fout, "stat_type, total page write, host page write, gc count, reduced write, ppn valid, ppn invalid, lpn vallid, total OOB entry, total invalid entry, \\
+	fprintf(fout, "stat_type, total page write, host page write, gc count, reduced write, commit cnt, ppn valid, ppn invalid, lpn vallid, total OOB entry, total invalid entry, \\
 	write req between print, avg write delay, avg write size, max write delay, max ref cnt\n");
 	
 	fclose(fout);
@@ -203,9 +203,9 @@ void stat_print(struct ssdstate *ssd)
 	// 	ssd->stat_total_invalid_entry, ssd->stat_total_seg_bytes, ssd->stat_min_alloc_seg, ssd->stat_max_alloc_seg, ssd->stat_write_req_print, ssd->stat_avg_write_delay, ssd->stat_min_write_delay, ssd->stat_max_write_delay,
 	// 	ssd->stat_GCRNVRAM_print, ssd->stat_avg_GCRNVRAM_delay, ssd->stat_NVRAMGC_print, ssd->stat_avg_NVRAMGC_delay, ssd->max_valid_array);
 
-	fprintf(fout, "%d, %u, %u, %u, %u, %lu, %lu, %lu, %lu, %lu, %u, %lu, %lu, %lu, %d\n", 
+	fprintf(fout, "%d, %u, %u, %u, %u, %u, %lu, %lu, %lu, %lu, %lu, %u, %lu, %lu, %lu, %d\n", 
 		ssd->stat_type, 
-		ssd->stat_total_write_count, ssd->stat_host_write_count, ssd->stat_gc_count, ssd->stat_reduced_write, 
+		ssd->stat_total_write_count, ssd->stat_host_write_count, ssd->stat_gc_count, ssd->stat_reduced_write, ssd->stat_commit_cnt, 
 		ssd->stat_ppn_valid, ssd->stat_ppn_invalid, ssd->stat_lpn_valid, ssd->stat_total_OOB_entry, ssd->stat_total_invalid_entry, 
 		ssd->stat_write_req_print, ssd->stat_avg_write_delay, ssd->stat_avg_req_size, ssd->stat_max_write_delay, ssd->max_valid_array);
 	
