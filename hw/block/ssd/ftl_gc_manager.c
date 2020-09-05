@@ -118,6 +118,7 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 	NVRAM_OOB_seg* OOB_seg;
 	int entry_nb = 0;
 	int64_t fing = 0;
+	int flag = 0;
 
 	ret = SELECT_VICTIM_SUPERBLOCK(ssd, chip, &victim_phy_block_nb);
 
@@ -131,14 +132,24 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 		return FAIL;
 	}
 
+	for(victim_phy_flash_nb=0; victim_phy_flash_nb<SB_BLK_NB; victim_phy_flash_nb++)
+	{
+		b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, victim_phy_flash_nb, victim_phy_block_nb);
+		if(b_s_entry->valid_page_nb > 0)
+		{
+			flag = 1;
+			break;
+		}
+	}
+
 	OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE;
-	if(OOB_seg->total_entry > 0)
+	if(flag == 1 && OOB_seg->total_entry > 0)
 	{
 		entry_nb = OOB_seg->total_entry;
 		NVRAM_OOB_read_time = (int64_t)entry_nb * OOB_ENTRY_BYTES * NVRAM_READ_DELAY / 64;
 		blocking_time = UPDATE_NVRAM_TS(ssd, NVRAM_OOB_read_time);
 	}
-
+	
 	int64_t cp_start = get_ts_in_ns();
 
 	// for(victim_phy_flash_nb=0; victim_phy_flash_nb<SB_BLK_NB; victim_phy_flash_nb++)

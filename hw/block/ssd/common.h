@@ -57,7 +57,7 @@
 #define STAT_COUNT
 
 #ifdef STAT_COUNT
-#define STAT_OUTPUT_FILE ("/home/nvm/sqlite_remap_log_80M_rand4page.csv")
+#define STAT_OUTPUT_FILE ("/home/nvm/sqlite_remap_log_80M_seq4page.csv")
 #define PRINT_INTERVAL 5	//输出的时间间隔（秒）
 #endif
 
