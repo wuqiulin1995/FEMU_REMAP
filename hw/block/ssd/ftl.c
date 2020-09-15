@@ -627,7 +627,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 		h_lpn = -1;
 		h_ppn = -1;
 
-		if(flag == CP_WRITE && h_ppn != -1 && USE_REMAP(ssd) == SUCCESS)
+		if(flag == CP_WRITE && h_ppn != -1 && USE_REMAP(ssd, CALC_BLOCK(ssd, h_ppn)) == SUCCESS)
 		{
 			int64_t wal_ppn = h_ppn;
 			// printf("CP REMAP -- dst_lpn = %ld, h_lpn = %ld, wal_ppn = %ld\n", lpn, h_lpn, wal_ppn);
@@ -637,7 +637,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 				// write_remap_print(ssd, write_page_nb, lpn, h_lpn);
 				
 				UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, wal_ppn), CALC_BLOCK(ssd, wal_ppn), CALC_PAGE(ssd, wal_ppn), VALID);
-				UPDATE_NVRAM_OOB(ssd, VALID);
+				UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, wal_ppn), VALID);
 
 				UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
 				mapping_table[lpn] = wal_ppn;

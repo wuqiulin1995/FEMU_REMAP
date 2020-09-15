@@ -21,8 +21,8 @@
 #define DATA_BITS_NVME 12
 #define PI_BYTES_NVME 24
 
-#define TOTAL_OOB_SEG 10240 // 40MB NVRAM 
-#define OOB_ENTRY_PER_SEG 256   // 4KB segment 
+#define TOTAL_OOB_SEG 81920 // 80MB NVRAM 
+#define OOB_ENTRY_PER_SEG 64   // 1KB segment 
 #define OOB_ENTRY_BYTES 16
 #define INVALID_ENTRY_THRE 0.05 // 无效条目大于总条目的5%可做NVRAM GC
 #define NVRAM_READ_DELAY 50 // 50ns / 64B (PCM)
