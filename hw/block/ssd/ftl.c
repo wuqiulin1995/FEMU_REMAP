@@ -431,6 +431,8 @@ int64_t _FTL_READ(struct ssdstate *ssd, int64_t sector_nb, unsigned int length)
         ssd->nb_blocked_reads++;
     }
 
+	ssd->stat_read_size_print += length;
+
 	INCREASE_IO_REQUEST_SEQ_NB(ssd);
 
 #ifdef FIRM_IO_BUFFER
@@ -625,10 +627,25 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 		h_lpn = -1;
 		h_ppn = -1;
 
-		if(flag == CP_WRITE)
+		if(flag == CP_WRITE && h_ppn != -1 && USE_REMAP(ssd) == SUCCESS)
 		{
-			ssd->stat_reduced_write++;
-			//nothing to do
+			int64_t wal_ppn = h_ppn;
+			// printf("CP REMAP -- dst_lpn = %ld, h_lpn = %ld, wal_ppn = %ld\n", lpn, h_lpn, wal_ppn);
+
+			if(INCREASE_INVERSE_MAPPING(ssd, wal_ppn, lpn) == SUCCESS)
+			{
+				// write_remap_print(ssd, write_page_nb, lpn, h_lpn);
+				
+				UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, wal_ppn), CALC_BLOCK(ssd, wal_ppn), CALC_PAGE(ssd, wal_ppn), VALID);
+				UPDATE_NVRAM_OOB(ssd, VALID);
+
+				UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
+				mapping_table[lpn] = wal_ppn;
+				ssd->in_nvram[lpn] = 1;
+
+				ssd->stat_remap_cnt++;
+				ssd->stat_reduced_write++;
+			}
 		}
 		else if(flag == DEDUP_WRITE && h_ppn != -1 && USE_REMAP(ssd, CALC_BLOCK(ssd, h_ppn)) == SUCCESS)
 		{
@@ -748,6 +765,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 
 			// write_debug_print(ssd, lpn, new_ppn, old_ppn);
 
+#if 0
 			if(flag == WAL_WRITE || flag == WAL_WRITE+1)
 			{
 				if(h_lpn > 0 && h_ppn != -1)
@@ -807,6 +825,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 #endif
 				}
 			}
+#endif // flag == WAL_WRITE || flag == WAL_WRITE+1
 
 #ifdef FTL_DEBUG
 			if(ret == SUCCESS){
@@ -843,8 +862,8 @@ skip:
 	ssd->stat_write_delay_print += max_need_to_emulate_tt;
 	ssd->stat_avg_write_delay = ssd->stat_write_delay_print / ssd->stat_write_req_print;
 
-	ssd->stat_req_size_print += length;
-	ssd->stat_avg_req_size = ssd->stat_req_size_print / ssd->stat_write_req_print;
+	ssd->stat_write_size_print += length;
+	ssd->stat_avg_req_size = ssd->stat_write_size_print / ssd->stat_write_req_print;
 
 	if(ssd->stat_min_write_delay > max_need_to_emulate_tt)
 		ssd->stat_min_write_delay = max_need_to_emulate_tt;
