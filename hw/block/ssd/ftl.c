@@ -546,6 +546,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 	int64_t fing = 0; // LPN指纹，按照zipf分布pick
 	int64_t low = 0, high = UNIQUE_PAGE_NB, mid;
 	inverse_mapping_entry* inverse_entry;
+	NVRAM_OOB_seg* OOB_seg = (NVRAM_OOB_seg*)(ssd->NVRAM_OOB_TABLE);
 
 	srand((unsigned int)get_usec());
 
@@ -636,6 +637,15 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 				// write_remap_print(ssd, write_page_nb, lpn, h_lpn);
 				
 				UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, wal_ppn), CALC_BLOCK(ssd, wal_ppn), CALC_PAGE(ssd, wal_ppn), VALID);
+				if(OOB_seg->cache_entry == OOB_ENTRY_PAGE-1)
+				{
+					cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, LOG_WRITE_DELAY);
+
+					if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
+						max_need_to_emulate_tt = cur_need_to_emulate_tt;
+					}
+				}
+				
 				UPDATE_NVRAM_OOB(ssd, VALID);
 
 				UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
@@ -656,8 +666,15 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 				// write_remap_print(ssd, write_page_nb, lpn, h_ppn);
 
 				UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, dedup_ppn), CALC_BLOCK(ssd, dedup_ppn), CALC_PAGE(ssd, dedup_ppn), VALID);
+				if(OOB_seg->cache_entry == OOB_ENTRY_PAGE-1)
+				{
+					cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, LOG_WRITE_DELAY) + FING_DELAY;
+				}
+				else
+				{
+					cur_need_to_emulate_tt = FING_DELAY;
+				}
 				UPDATE_NVRAM_OOB(ssd, VALID);
-				cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, NVRAM_WRITE_DELAY/4) + FING_DELAY;
 				
 				if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
 					max_need_to_emulate_tt = cur_need_to_emulate_tt;
@@ -682,12 +699,16 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 			{
 				// write_remap_print(ssd, write_page_nb, lpn, h_lpn);
 				UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, gc_ppn), CALC_BLOCK(ssd, gc_ppn), CALC_PAGE(ssd, gc_ppn), VALID);
-				UPDATE_NVRAM_OOB(ssd, VALID);
-				cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, NVRAM_WRITE_DELAY/4) + FING_DELAY;
-				
-				if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
-					max_need_to_emulate_tt = cur_need_to_emulate_tt;
+				if(OOB_seg->cache_entry == OOB_ENTRY_PAGE-1)
+				{
+					cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, LOG_WRITE_DELAY);
+
+					if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
+						max_need_to_emulate_tt = cur_need_to_emulate_tt;
+					}
 				}
+				
+				UPDATE_NVRAM_OOB(ssd, VALID);
 
 				UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
 				mapping_table[lpn] = gc_ppn;
@@ -781,12 +802,11 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 						USE_REMAP(ssd);
 
 						UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), VALID);
-						UPDATE_NVRAM_OOB(ssd, VALID);
-						cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, NVRAM_WRITE_DELAY/4) + FING_DELAY;
-				
-						if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
-							max_need_to_emulate_tt = cur_need_to_emulate_tt;
+						if(OOB_seg->cache_entry == OOB_ENTRY_PAGE-1)
+						{
+							UPDATE_NVRAM_TS(ssd, LOG_WRITE_DELAY);
 						}
+						UPDATE_NVRAM_OOB(ssd, VALID);
 
 						UPDATE_OLD_PAGE_MAPPING(ssd, h_lpn);
 						mapping_table[h_lpn] = new_ppn;

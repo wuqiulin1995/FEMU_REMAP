@@ -146,7 +146,7 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 	if(flag == 1 && OOB_seg->total_entry > 0)
 	{
 		entry_nb = OOB_seg->total_entry;
-		NVRAM_OOB_read_time = (int64_t)entry_nb * OOB_ENTRY_BYTES * NVRAM_READ_DELAY / 64;
+		NVRAM_OOB_read_time = (int64_t)entry_nb / OOB_ENTRY_PAGE * LOG_READ_DELAY;
 		blocking_time = UPDATE_NVRAM_TS(ssd, NVRAM_OOB_read_time);
 	}
 	

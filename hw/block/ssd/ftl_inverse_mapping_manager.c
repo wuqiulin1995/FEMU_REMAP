@@ -68,6 +68,7 @@ void INIT_NVRAM_OOB(struct ssdstate *ssd)
 
 	NVRAM_OOB_seg* curr_OOB_seg = (NVRAM_OOB_seg*)ssd->NVRAM_OOB_TABLE;
 
+	curr_OOB_seg->cache_entry = 0;
 	curr_OOB_seg->total_entry = 0;
 	curr_OOB_seg->invalid_entry = 0;
 }
@@ -1155,20 +1156,17 @@ int NVRAM_OOB_GC(struct ssdstate *ssd)
 	UPDATE_NVRAM_OOB(ssd, 0);
 
 	// 写有效条目
-	for(i = 0; i < valid_entry_nb; i++)
-	{
-		curr_OOB_seg->total_entry++;
-
-		ssd->stat_total_OOB_entry++;
-		ssd->stat_total_seg_bytes += OOB_ENTRY_BYTES;
-	}
+	curr_OOB_seg->total_entry = (valid_entry_nb + curr_OOB_seg->cache_entry) / OOB_ENTRY_PAGE * OOB_ENTRY_PAGE;
+	curr_OOB_seg->cache_entry = valid_entry_nb + curr_OOB_seg->cache_entry - curr_OOB_seg->total_entry;
+	ssd->stat_total_OOB_entry = curr_OOB_seg->total_entry;
+	ssd->stat_total_seg_bytes = curr_OOB_seg->total_entry * OOB_ENTRY_BYTES;
 
 // #ifdef STAT_COUNT
 //     ssd->stat_type = 5;
 //     stat_print(ssd);
 // #endif
 	
-	NVRAM_OOB_rw_time = (int64_t)entry_nb * OOB_ENTRY_BYTES * NVRAM_READ_DELAY / 64 + (int64_t)valid_entry_nb * OOB_ENTRY_BYTES * NVRAM_WRITE_DELAY / 64;
+	NVRAM_OOB_rw_time = (int64_t)entry_nb / OOB_ENTRY_PAGE * LOG_READ_DELAY + (int64_t)curr_OOB_seg->total_entry / OOB_ENTRY_PAGE * LOG_WRITE_DELAY;
 	// printf("entry nb = %d, valid_entry_nb = %d, NVRAM_OOB_rw_time = %ld\n", entry_nb, valid_entry_nb, NVRAM_OOB_rw_time);
 
 	// 推迟NVRAM可获取时间点
@@ -1191,15 +1189,26 @@ int UPDATE_NVRAM_OOB(struct ssdstate *ssd, int valid)
 
 	if(valid == VALID)
 	{
-		if(ssd->stat_total_OOB_entry == MAX_ENTRY_NB && ssd->stat_total_invalid_entry > 0)
+		if(ssd->stat_total_OOB_entry >= MAX_ENTRY_NB && ssd->stat_total_invalid_entry > 0)
 		{		
 			NVRAM_OOB_GC(ssd);
 		}
 
-		OOB_seg->total_entry++;
+		OOB_seg->cache_entry++;
 
-		ssd->stat_total_OOB_entry++;
-		ssd->stat_total_seg_bytes += OOB_ENTRY_BYTES;
+		if(OOB_seg->cache_entry >= OOB_ENTRY_PAGE)
+		{
+			OOB_seg->total_entry += OOB_ENTRY_PAGE;
+			ssd->stat_total_OOB_entry += OOB_ENTRY_PAGE;
+			ssd->stat_total_seg_bytes += OOB_ENTRY_BYTES * OOB_ENTRY_PAGE;
+
+			OOB_seg->cache_entry = 0;
+		}
+
+		// OOB_seg->total_entry++;
+
+		// ssd->stat_total_OOB_entry++;
+		// ssd->stat_total_seg_bytes += OOB_ENTRY_BYTES;
 
 		if(ssd->stat_total_OOB_entry > MAX_ENTRY_NB)
 		{

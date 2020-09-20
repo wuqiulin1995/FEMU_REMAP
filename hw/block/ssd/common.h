@@ -23,11 +23,12 @@
 
 // #define TOTAL_OOB_SEG 10240 // 40MB NVRAM 
 // #define OOB_ENTRY_PER_SEG 256   // 4KB segment
-#define MAX_ENTRY_NB 5242880 // 80MB NVRAM 
+#define MAX_ENTRY_NB 5242624 // 80MB NVRAM 
 #define OOB_ENTRY_BYTES 16
+#define OOB_ENTRY_PAGE 256
 #define INVALID_ENTRY_THRE 0.05 // 无效条目大于总条目的5%可做NVRAM GC
-#define NVRAM_READ_DELAY 50 // 50ns / 64B (PCM)
-#define NVRAM_WRITE_DELAY 500 // 500ns /64B (PCM)
+#define LOG_READ_DELAY 50000 // 50us flash page read
+#define LOG_WRITE_DELAY 500000 // 500us flash page write
 
 // #define X_FTL
 #define WAL_WRITE 100
@@ -57,7 +58,7 @@
 #define STAT_COUNT
 
 #ifdef STAT_COUNT
-#define STAT_OUTPUT_FILE ("/home/nvm/sqlite_remap_log_80M_seq4page.csv")
+#define STAT_OUTPUT_FILE ("/home/nvm/sqlite_flash_log_80M_seq4page.csv")
 #define PRINT_INTERVAL 5	//输出的时间间隔（秒）
 #endif
 

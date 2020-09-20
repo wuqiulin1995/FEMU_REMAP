@@ -26,6 +26,7 @@ struct ssdstate;
 typedef struct NVRAM_OOB_seg {
 	// int alloc_seg;  // allocated segment count
 	// int free_entry;  // free OOB entry count
+	int cache_entry;
 	int total_entry;
 	int invalid_entry; // invalid entry count, followed by decrease inverse mapping
 }NVRAM_OOB_seg;
