@@ -278,6 +278,11 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 						}
 						else
 						{
+							if(OOB_seg->cache_entry == OOB_ENTRY_PAGE-1)
+							{
+								UPDATE_NVRAM_TS(ssd, LOG_WRITE_DELAY);
+							}
+
 							UPDATE_NVRAM_OOB(ssd, VALID);
 							ssd->in_nvram[lpn] = 1;
 						}
