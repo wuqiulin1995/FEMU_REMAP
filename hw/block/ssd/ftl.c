@@ -638,6 +638,12 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 				UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, wal_ppn), CALC_BLOCK(ssd, wal_ppn), CALC_PAGE(ssd, wal_ppn), VALID);
 				UPDATE_NVRAM_OOB(ssd, VALID);
 
+				cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, NVRAM_WRITE_DELAY/4);
+				
+				if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
+					max_need_to_emulate_tt = cur_need_to_emulate_tt;
+				}
+
 				UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
 				mapping_table[lpn] = wal_ppn;
 				ssd->in_nvram[lpn] = 1;
@@ -683,7 +689,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 				// write_remap_print(ssd, write_page_nb, lpn, h_lpn);
 				UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, gc_ppn), CALC_BLOCK(ssd, gc_ppn), CALC_PAGE(ssd, gc_ppn), VALID);
 				UPDATE_NVRAM_OOB(ssd, VALID);
-				cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, NVRAM_WRITE_DELAY/4) + FING_DELAY;
+				cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, NVRAM_WRITE_DELAY/4);
 				
 				if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
 					max_need_to_emulate_tt = cur_need_to_emulate_tt;
@@ -782,11 +788,7 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 
 						UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), VALID);
 						UPDATE_NVRAM_OOB(ssd, VALID);
-						cur_need_to_emulate_tt = UPDATE_NVRAM_TS(ssd, NVRAM_WRITE_DELAY/4) + FING_DELAY;
-				
-						if (cur_need_to_emulate_tt > max_need_to_emulate_tt) {
-							max_need_to_emulate_tt = cur_need_to_emulate_tt;
-						}
+						UPDATE_NVRAM_TS(ssd, NVRAM_WRITE_DELAY/4);
 
 						UPDATE_OLD_PAGE_MAPPING(ssd, h_lpn);
 						mapping_table[h_lpn] = new_ppn;
