@@ -277,6 +277,8 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 						{
 							UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, new_ppn), VALID);
 							ssd->in_nvram[lpn] = 1;
+
+							UPDATE_NVRAM_TS(ssd, CALC_BLOCK(ssd, new_ppn), NVRAM_WRITE_DELAY / 4);
 						}
 					}
 					// inverse_entry->lpn_cnt = 0;
