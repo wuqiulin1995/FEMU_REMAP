@@ -1166,7 +1166,7 @@ int NVRAM_OOB_GC(struct ssdstate *ssd)
 //     stat_print(ssd);
 // #endif
 	
-	NVRAM_OOB_rw_time = (int64_t)entry_nb / OOB_ENTRY_PAGE * LOG_READ_DELAY / 16 + (int64_t)entry_nb * OOB_ENTRY_BYTES / 64 * 50 + (int64_t)curr_OOB_seg->total_entry / OOB_ENTRY_PAGE * LOG_WRITE_DELAY / 16 + 5000000 * 2;
+	NVRAM_OOB_rw_time = (int64_t)entry_nb / OOB_ENTRY_PAGE * LOG_READ_DELAY / 16 + (int64_t)entry_nb * OOB_ENTRY_BYTES / 64 * 50 + (int64_t)curr_OOB_seg->total_entry / OOB_ENTRY_PAGE * LOG_WRITE_DELAY / 16 + 5000000 * ERASE_TIME;
 	// printf("entry nb = %d, valid_entry_nb = %d, NVRAM_OOB_rw_time = %ld\n", entry_nb, valid_entry_nb, NVRAM_OOB_rw_time);
 
 	// 推迟NVRAM可获取时间点
