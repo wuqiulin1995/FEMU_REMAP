@@ -17,14 +17,14 @@
 #include "ftl_type.h"
 #include "god.h"
 
-#define DUP_RATIO 50  // 10% duplicate data
+// #define DUP_RATIO 50  // 10% duplicate data
 #define UNIQUE_PAGE_NB 4100000 // lpn_valid * (100 - dup_ratio) / 100
-#define MAX_ENTRY_NB 7864064 // 40MB 2621184 80MB 5242624 120MB 7864064
+#define MAX_ENTRY_NB 5242624 // 40MB 2621184 80MB 5242624 120MB 7864064
 #define ERASE_TIME 3
 
 #define STAT_COUNT
 #ifdef STAT_COUNT
-#define STAT_OUTPUT_FILE ("/home/nvm/dedup50_flash_log_120M_rocksdb.csv")
+#define STAT_OUTPUT_FILE ("/home/nvm/copy_flash_log_80M_fileserver.csv")
 #define PRINT_INTERVAL 5	//输出的时间间隔（秒）
 #endif
 
