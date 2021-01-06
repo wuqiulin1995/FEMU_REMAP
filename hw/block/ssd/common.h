@@ -56,7 +56,7 @@
 #define STAT_COUNT
 
 #ifdef STAT_COUNT
-#define STAT_OUTPUT_FILE ("/home/nvm/f2fsgc_remap_seg1K_80M_fileserver.csv")
+#define STAT_OUTPUT_FILE ("/home/nvm/copy_remap_seg1K_80M_fileserver.csv")
 #define PRINT_INTERVAL 5	//输出的时间间隔（秒）
 #endif
 
