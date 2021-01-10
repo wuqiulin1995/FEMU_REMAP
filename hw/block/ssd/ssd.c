@@ -392,6 +392,8 @@ int femu_discard_process(struct ssdstate *ssd, uint32_t length, int64_t sector_n
 	int64_t lba = sector_nb;
 	int64_t lpn;
 
+    int64_t last_vpn = -1;
+
 	unsigned int remain = length;
 	unsigned int left_skip = sector_nb % SECTORS_PER_PAGE;
 	unsigned int right_skip;
@@ -406,6 +408,8 @@ int femu_discard_process(struct ssdstate *ssd, uint32_t length, int64_t sector_n
      * current I/O to. It will be finally decided by gc timestamps according 
      * to the GC mode you are using.
      */
+
+    ssd->stat_trim_cmd++;
 
 	while(remain > 0)
     {
@@ -425,6 +429,14 @@ int femu_discard_process(struct ssdstate *ssd, uint32_t length, int64_t sector_n
 
 		lpn = lba / (int64_t)SECTORS_PER_PAGE;
 
+        ssd->stat_trim_lpn++;
+
+        if(lpn/1024 != last_vpn)
+        {
+            last_vpn = lpn/1024;
+            ssd->stat_trim_write_flash++;
+        }
+
 		UPDATE_OLD_PAGE_MAPPING(ssd, lpn);
         ssd->mapping_table[lpn] = -1;   //hao new add
         
@@ -434,8 +446,13 @@ int femu_discard_process(struct ssdstate *ssd, uint32_t length, int64_t sector_n
 	}
 
 #ifdef STAT_COUNT
-    ssd->stat_type = 2;
-    stat_print(ssd);
+    ssd->stat_temp = get_ts_in_ns();
+    if(ssd->stat_temp - ssd->stat_time >= 1e9)
+    {
+        ssd->stat_type = 2;
+        stat_print(ssd);
+        ssd->stat_time = ssd->stat_temp;
+    }
 #endif
 
 	return SUCCESS;     

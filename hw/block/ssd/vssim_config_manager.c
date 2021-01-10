@@ -63,6 +63,10 @@ void INIT_STAT_COUNT(struct ssdstate *ssd)
     ssd->stat_NVRAMGC_print=0;
     ssd->stat_NVRAMGC_delay_print=0;
 
+	ssd->stat_trim_cmd=0;
+    ssd->stat_trim_lpn=0;
+    ssd->stat_trim_write_flash=0;
+
 #ifdef STAT_COUNT
 	FILE *fout = NULL;
 	fout = fopen(STAT_OUTPUT_FILE, "w");
@@ -77,7 +81,7 @@ void INIT_STAT_COUNT(struct ssdstate *ssd)
 	// write req between print, avg write delay, min write delay, max write delay, GCRNVRAM between print, avg GCRNVRAM delay, NVRAMGC between print, avg NVRAMGC delay, max ref cnt\n");
 	
 	fprintf(fout, "stat_type, total page write, host page write, gc count, reduced write, ppn valid, ppn invalid, lpn vallid, \\
-	write req between print, avg write delay, write size (KB), read size (KB), max write delay\n");
+	write req between print, avg write delay, write size (KB), read size (KB), max write delay, trim cmd, trim lpn, trim write flash\n");
 
 	fclose(fout);
 #endif //STAT_COUNT
@@ -195,11 +199,12 @@ void stat_print(struct ssdstate *ssd)
 	// 	ssd->stat_total_invalid_entry, ssd->stat_total_seg_bytes, ssd->stat_min_alloc_seg, ssd->stat_max_alloc_seg, ssd->stat_write_req_print, ssd->stat_avg_write_delay, ssd->stat_min_write_delay, ssd->stat_max_write_delay,
 	// 	ssd->stat_GCRNVRAM_print, ssd->stat_avg_GCRNVRAM_delay, ssd->stat_NVRAMGC_print, ssd->stat_avg_NVRAMGC_delay, ssd->max_valid_array);
 
-	fprintf(fout, "%d, %u, %u, %u, %u, %lu, %lu, %lu, %u, %lu, %lu, %lu, %lu\n",
+	fprintf(fout, "%d, %u, %u, %u, %u, %lu, %lu, %lu, %u, %lu, %lu, %lu, %lu, %u, %u, %u\n",
 	ssd->stat_type, 
 	ssd->stat_total_write_count, ssd->stat_host_write_count, ssd->stat_gc_count, ssd->stat_reduced_write,
 	ssd->stat_ppn_valid, ssd->stat_ppn_invalid, ssd->stat_lpn_valid,
-	ssd->stat_write_req_print, ssd->stat_avg_write_delay, ssd->stat_write_size_print/2, ssd->stat_read_size_print/2, ssd->stat_max_write_delay);
+	ssd->stat_write_req_print, ssd->stat_avg_write_delay, ssd->stat_write_size_print/2, ssd->stat_read_size_print/2, ssd->stat_max_write_delay, 
+	ssd->stat_trim_cmd, ssd->stat_trim_lpn, ssd->stat_trim_write_flash);
 
 	fflush(fout);
 	fclose(fout);
@@ -222,6 +227,10 @@ void stat_print(struct ssdstate *ssd)
 		ssd->stat_avg_NVRAMGC_delay=0;
 		ssd->stat_NVRAMGC_print=0;
 		ssd->stat_NVRAMGC_delay_print=0;
+
+		ssd->stat_trim_cmd=0;
+    	ssd->stat_trim_lpn=0;
+    	ssd->stat_trim_write_flash=0;
 	}
 
 	ssd->stat_type=0;

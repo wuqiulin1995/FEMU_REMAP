@@ -49,7 +49,7 @@
 #define STAT_COUNT
 
 #ifdef STAT_COUNT
-#define STAT_OUTPUT_FILE ("/home/nvm/copy_base_fileserver.csv")
+#define STAT_OUTPUT_FILE ("/home/nvm/trim_base_fio.csv")
 #define PRINT_INTERVAL 5	//输出的时间间隔（秒）
 #endif
 

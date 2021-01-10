@@ -300,6 +300,10 @@ struct ssdstate {
     uint32_t stat_NVRAMGC_print;
     uint64_t stat_NVRAMGC_delay_print;
 
+    uint32_t stat_trim_cmd;
+    uint32_t stat_trim_lpn;
+    uint32_t stat_trim_write_flash;
+
     /* Average IO Time */
     double avg_write_delay;
     double total_write_count;
