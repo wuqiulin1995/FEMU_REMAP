@@ -32,6 +32,8 @@
 // #define X_FTL
 #define WAL_WRITE 100
 #define CP_WRITE 102
+#define TD_WRITE 106
+#define TC_WRITE 107
 
 // #define DUP_RATIO 50  // 50% duplicate data
 #define UNIQUE_PAGE_NB 4100000 // lpn_valid * (100 - dup_ratio) / 100
@@ -57,7 +59,7 @@
 #define STAT_COUNT
 
 #ifdef STAT_COUNT
-#define STAT_OUTPUT_FILE ("/home/nvm/copy_remap_opt_fileserver.csv")
+#define STAT_OUTPUT_FILE ("/home/nvm/swwal_createfiles.csv")
 #define PRINT_INTERVAL 5	//输出的时间间隔（秒）
 #endif
 

@@ -691,7 +691,18 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 				ssd->stat_reduced_write++;
 			}
 		}
-		else // flag != CP_WRITE ||  DEDUP_WRITE || FS_GC_WRITE
+#ifdef SWWAL2
+		else if(flag == TD_WRITE || flag == TC_WRITE)
+		{
+			ssd->stat_txdc_cnt++;
+			if(flag == TC_WRITE)  //commit
+			{
+				ssd->stat_commit_cnt++;
+			}
+			ssd->stat_reduced_write++;
+		}
+#endif  // SWWAL2
+		else // flag != CP_WRITE ||  DEDUP_WRITE || FS_GC_WRITE || TDTC_WRITE
 		{ 
 
 #ifdef FIRM_IO_BUFFER
@@ -815,6 +826,39 @@ int64_t _FTL_WRITE(struct ssdstate *ssd, struct request_meta *request1)
 				}
 			}
 #endif // flag == WAL_WRITE || flag == WAL_WRITE+1
+
+			if(flag == TD_WRITE || flag == TC_WRITE)
+			{
+				ssd->stat_txdc_cnt++;
+				if(flag == TC_WRITE)  //commit
+				{
+					ssd->stat_commit_cnt++;
+#ifdef X_FTL
+					ret = GET_NEW_PAGE(ssd, VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn);
+					if(ret == FAIL)
+					{
+						printf("ERROR[%s] Get new page fail xl2p \n", __FUNCTION__);
+						return FAIL;
+					}
+					old_ppn_xl2p = ssd->xl2p_ppn;
+
+					cur_need_to_emulate_tt = SSD_PAGE_WRITE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), n_io_info);
+					if (cur_need_to_emulate_tt > max_need_to_emulate_tt) 
+					{
+						max_need_to_emulate_tt = cur_need_to_emulate_tt;
+					}
+
+					if(old_ppn_xl2p != -1)
+					{
+						UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, old_ppn_xl2p), CALC_BLOCK(ssd, old_ppn_xl2p), CALC_PAGE(ssd, old_ppn_xl2p), INVALID);
+					}
+
+					ssd->xl2p_ppn = new_ppn;
+					UPDATE_BLOCK_STATE(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), DATA_BLOCK);
+					UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, new_ppn), CALC_BLOCK(ssd, new_ppn), CALC_PAGE(ssd, new_ppn), VALID);
+#endif
+				}
+			}
 
 #ifdef FTL_DEBUG
 			if(ret == SUCCESS){
