@@ -24,7 +24,7 @@
 #define TOTAL_OOB_SEG 81920 // 80MB NVRAM
 #define OOB_ENTRY_PER_SEG 64   // 1KB segment
 #define OOB_ENTRY_BYTES 16
-#define INVALID_ENTRY_THRE 0.05 // 无效条目大于总条目的5%可做NVRAM GC
+#define INVALID_ENTRY_THRE 0.05 // NVRAM GC can be triggered if the invalid remapping entries > 5%
 #define NVRAM_READ_DELAY 50 // 50ns / 64B (PCM)
 #define NVRAM_WRITE_DELAY 500 // 500ns /64B (PCM)
 
@@ -32,13 +32,13 @@
 #define WAL_WRITE 100
 #define CP_WRITE 102
 
-// #define DUP_RATIO 50  // 50% duplicate data
-#define UNIQUE_PAGE_NB 4200000 // lpn_valid * (100 - dup_ratio) / 100
+#define DUP_RATIO 50  // 50% duplicate data
+#define UNIQUE_PAGE_NB 4200000 // valid lpn count * (100 - DUP_RATIO) / 100
 
 #ifdef DUP_RATIO
-#define FING_DELAY 32000 // 指纹计算延时 32000ns
+#define FING_DELAY 32000 // delay of calculating the fingerprint: 32000ns
 #else
-#define FING_DELAY 0 // 指纹计算延时 ns
+#define FING_DELAY 0 
 #endif
 
 #define DEDUP_WRITE 103
@@ -57,7 +57,7 @@
 
 #ifdef STAT_COUNT
 #define STAT_OUTPUT_FILE ("/home/nvm/copy_remap_seg1K_80M_fileserver.csv")
-#define PRINT_INTERVAL 5	//输出的时间间隔（秒）
+#define PRINT_INTERVAL 5	//statistic data print interval (s)
 #endif
 
 #define SUPERBLOCK
