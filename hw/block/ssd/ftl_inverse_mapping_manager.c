@@ -69,7 +69,7 @@ void INIT_NVRAM_OOB(struct ssdstate *ssd)
 		return;
 	}
 
-	int i;
+	int i = 0;
 	NVRAM_OOB_seg* curr_OOB_seg = (NVRAM_OOB_seg*)ssd->NVRAM_OOB_TABLE;
 
 	for(i=0;i<SUPERBLOCK_NB;i++){
@@ -77,8 +77,22 @@ void INIT_NVRAM_OOB(struct ssdstate *ssd)
 		curr_OOB_seg->free_entry = 0;
 		curr_OOB_seg->invalid_entry = 0;
 
+		curr_OOB_seg->alloc_page = 0;
+		curr_OOB_seg->total_entry_page = 0;
+		curr_OOB_seg->invalid_entry_page = 0;
+
 		curr_OOB_seg += 1;
 	}
+
+	ssd->FLASH_OOB_TABLE = (void*)calloc(1, sizeof(flash_OOB));
+	if(ssd->FLASH_OOB_TABLE == NULL){
+		printf("ERROR[%s] Calloc FLASH_OOB_TABLE fail\n", __FUNCTION__);
+		return;
+	}
+
+	flash_OOB* flash_oob = (flash_OOB*)ssd->FLASH_OOB_TABLE;
+	flash_oob->alloc_page = 0;
+
 }
 
 void INIT_zipf_AND_fingerprint(struct ssdstate *ssd)
@@ -1139,12 +1153,6 @@ int USE_REMAP(struct ssdstate *ssd, unsigned int phy_block_nb)
 		if(ssd->stat_total_OOB_entry > 0)
 			invalid_ratio = (double)(ssd->stat_total_invalid_entry) / (ssd->stat_total_OOB_entry);
 
-		if(ssd->stat_total_alloc_seg >= TOTAL_OOB_SEG && invalid_ratio <= INVALID_ENTRY_THRE)
-		{
-			ssd->stat_use_remap_fail++;
-			return FAIL;
-		}
-
 		if(ssd->stat_total_alloc_seg >= TOTAL_OOB_SEG && invalid_ratio > INVALID_ENTRY_THRE)
 		{		
 			if(NVRAM_OOB_GC(ssd) == FAIL)
@@ -1158,11 +1166,175 @@ int USE_REMAP(struct ssdstate *ssd, unsigned int phy_block_nb)
 			if(count == BLOCK_NB)
 				printf("[%s] NVRAM GC count = %d\n", __FUNCTION__, count);
 		}
+
+		if(ssd->stat_total_alloc_seg >= TOTAL_OOB_SEG && invalid_ratio <= INVALID_ENTRY_THRE)
+		// if(ssd->stat_total_alloc_seg >= TOTAL_OOB_SEG)
+		{
+			// ssd->stat_use_remap_fail++;
+			// return FAIL;
+
+			MOVE_ENTRY_TO_FLASH(ssd, -1);
+
+			// count++;
+		}
 		
 	}while(count <= BLOCK_NB);
 
 	ssd->stat_use_remap_fail++;
 	return FAIL;
+}
+
+int FLASH_OOB_GC(struct ssdstate *ssd)
+{
+	struct ssdconf *sc = &(ssd->ssdparams);
+	int entry_nb = 0, used_page = 0, alloc_page = 0, i = 0, j = 0;
+	void* NVRAM_OOB_TABLE = ssd->NVRAM_OOB_TABLE;
+	int BLOCK_NB = sc->BLOCK_NB;
+	int SB_BLK_NB = sc->FLASH_NB * sc->PLANES_PER_FLASH;	// PLANES_PER_FLASH == 1, 16
+	int need_oob_page = 0;
+	NVRAM_OOB_seg* curr_OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE;
+	flash_OOB* flash_oob = (flash_OOB*)(ssd->FLASH_OOB_TABLE);
+	int64_t FLASH_OOB_rw_time;
+
+	flash_oob->alloc_page = 0;
+
+	for(i = 0; i < BLOCK_NB; i++)
+	{
+		if(curr_OOB_seg->alloc_page == 0)
+		{
+			if(curr_OOB_seg->total_entry_page != 0 || curr_OOB_seg->invalid_entry_page != 0)
+				printf("ERROR[%s] curr_OOB_seg->alloc_page == 0 but entry != 0\n", __FUNCTION__);
+		}
+
+		entry_nb += curr_OOB_seg->total_entry_page;
+		used_page += curr_OOB_seg->alloc_page;
+		need_oob_page = (curr_OOB_seg->total_entry_page - curr_OOB_seg->invalid_entry_page + OOB_ENTRY_PER_PAGE - 1) / OOB_ENTRY_PER_PAGE;
+		alloc_page += need_oob_page;
+
+		flash_oob->alloc_page += need_oob_page;
+
+		curr_OOB_seg->alloc_page = need_oob_page;
+		curr_OOB_seg->total_entry_page = curr_OOB_seg->total_entry_page - curr_OOB_seg->invalid_entry_page;
+		curr_OOB_seg->invalid_entry_page = 0;
+
+		curr_OOB_seg += 1;
+	}
+
+	if(flash_oob->alloc_page > MAX_FLASH_OOB_PAGE)
+		printf("[%s] flash_oob->alloc_page (%d) > MAX_FLASH_OOB_PAGE\n", __FUNCTION__, flash_oob->alloc_page);
+	
+	FLASH_OOB_rw_time = (int64_t)used_page * sc->CELL_READ_DELAY / SB_BLK_NB + (int64_t)entry_nb * OOB_ENTRY_BYTES / 64 * 50 + (int64_t)alloc_page * sc->CELL_PROGRAM_DELAY / SB_BLK_NB + sc->BLOCK_ERASE_DELAY * MAX_OOB_SB;
+
+	// 推迟flash oob可获取时间点
+    UPDATE_FLASH_OOB_TS(ssd, FLASH_OOB_rw_time);
+
+	return SUCCESS;
+}
+
+int MOVE_ENTRY_TO_FLASH(struct ssdstate *ssd, int ex_blk)
+{
+	struct ssdconf *sc = &(ssd->ssdparams);
+	void* NVRAM_OOB_TABLE = ssd->NVRAM_OOB_TABLE;
+	int PAGE_NB = sc->PAGE_NB;
+    int BLOCK_NB = sc->BLOCK_NB;
+	int SB_BLK_NB = sc->FLASH_NB * sc->PLANES_PER_FLASH;	// PLANES_PER_FLASH == 1
+	int max_alloc_seg = 0, entry_nb = 0, valid_entry_nb = 0, last_entry_nb = 0, i = 0, j = 0;
+	int phy_flash_nb = 0, victim_OOB_nb = -1;
+	int need_oob_page = 0;
+	int64_t ppn, lpn;
+	block_state_entry* b_s_entry;
+	int8_t* valid_array;
+	inverse_mapping_entry* inverse_entry;
+	inverse_node* curr_inverse_node;
+	NVRAM_OOB_seg* curr_OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE;
+	flash_OOB* flash_oob = (flash_OOB*)(ssd->FLASH_OOB_TABLE);
+	int64_t NVRAM_OOB_rw_time = 0, FLASH_OOB_rw_time = 0;
+
+	// choose nvram segments with the most alloc_seg
+	for(i = 0; i < BLOCK_NB; i++)
+	{
+		if(curr_OOB_seg->alloc_seg > max_alloc_seg && i != ex_blk)
+		{
+			max_alloc_seg = curr_OOB_seg->alloc_seg;
+			victim_OOB_nb = i;
+		}	
+
+		curr_OOB_seg += 1;
+	}
+
+	if(victim_OOB_nb == -1)
+	{
+		printf("ERROR[%s] No victim NVRAM segment to write to flash\n", __FUNCTION__);
+		return FAIL;
+	}
+
+	curr_OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE + victim_OOB_nb;
+	entry_nb = curr_OOB_seg->alloc_seg * OOB_ENTRY_PER_SEG - curr_OOB_seg->free_entry;
+	valid_entry_nb = entry_nb - curr_OOB_seg->invalid_entry;
+
+	need_oob_page = valid_entry_nb / OOB_ENTRY_PER_PAGE;
+
+	if(need_oob_page == 0)
+	{
+		//printf("[%s] need_oob_page == 0\n", __FUNCTION__);
+
+		need_oob_page = 1;
+		last_entry_nb = 0;
+		UPDATE_NVRAM_OOB(ssd, victim_OOB_nb, 0);
+	}
+	else
+	{
+		last_entry_nb = valid_entry_nb - need_oob_page * OOB_ENTRY_PER_PAGE;
+		UPDATE_NVRAM_OOB(ssd, victim_OOB_nb, 0);
+		for(i = 0; i < last_entry_nb; i++)
+			UPDATE_NVRAM_OOB(ssd, victim_OOB_nb, VALID);
+	}
+	curr_OOB_seg->alloc_page += need_oob_page;
+	curr_OOB_seg->total_entry_page += valid_entry_nb - last_entry_nb;
+
+	flash_oob->alloc_page += need_oob_page;
+
+	NVRAM_OOB_rw_time = (int64_t)entry_nb * OOB_ENTRY_BYTES * NVRAM_READ_DELAY / 64 + (int64_t)last_entry_nb * OOB_ENTRY_BYTES * NVRAM_WRITE_DELAY / 64;
+	FLASH_OOB_rw_time = (int64_t)((need_oob_page + SB_BLK_NB - 1) / SB_BLK_NB) * sc->CELL_PROGRAM_DELAY;
+
+	UPDATE_NVRAM_TS(ssd, victim_OOB_nb, NVRAM_OOB_rw_time);
+	UPDATE_FLASH_OOB_TS(ssd, FLASH_OOB_rw_time);
+
+	j = valid_entry_nb - last_entry_nb;
+	for(phy_flash_nb=0; j>0 && phy_flash_nb<SB_BLK_NB; phy_flash_nb++)
+	{
+		b_s_entry = GET_BLOCK_STATE_ENTRY(ssd, phy_flash_nb, victim_OOB_nb);
+		valid_array = b_s_entry->valid_array;
+
+		for(i=0;j>0 && i<PAGE_NB;i++)
+		{
+			if(valid_array[i] > 0)
+			{
+				ppn = phy_flash_nb*sc->PAGES_PER_FLASH + victim_OOB_nb*sc->PAGE_NB + i;
+				inverse_entry = GET_INVERSE_MAPPING_INFO(ssd, ppn);
+				curr_inverse_node = inverse_entry->head;
+
+				while(j>0 && curr_inverse_node != NULL)
+				{
+					lpn = curr_inverse_node->lpn;
+					curr_inverse_node = curr_inverse_node->next;
+
+					if(ssd->in_nvram[lpn] == 1)
+					{
+						ssd->in_nvram[lpn] = 2;
+						j--;
+					}
+				}
+			}
+		}
+	}
+
+	if(flash_oob->alloc_page >= MAX_FLASH_OOB_PAGE)
+	{
+		FLASH_OOB_GC(ssd);
+	}
+
+	return SUCCESS;
 }
 
 int NVRAM_OOB_GC(struct ssdstate *ssd)
@@ -1174,7 +1346,7 @@ int NVRAM_OOB_GC(struct ssdstate *ssd)
 	NVRAM_OOB_seg* curr_OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE;
 	int64_t NVRAM_OOB_rw_time;
 
-	// 选择无效条目最多的segments
+	// choose nvram segments with the most invalid entries
 	for(i = 0; i < BLOCK_NB; i++)
 	{
 		if(curr_OOB_seg->invalid_entry > max_invalid_entry_cnt)
@@ -1270,11 +1442,6 @@ int UPDATE_NVRAM_OOB(struct ssdstate *ssd, unsigned int phy_block_nb, int valid)
 
 		OOB_seg->free_entry--;
 		ssd->stat_total_OOB_entry++;
-
-		// if(ssd->stat_total_alloc_seg > TOTAL_OOB_SEG)
-		// {
-		// 	printf("[%s] ssd->stat_total_alloc_seg > TOTAL_OOB_SEG\n", __FUNCTION__);
-		// }
 	}
 	else if(valid == 0)
 	{
@@ -1297,7 +1464,7 @@ int UPDATE_NVRAM_OOB(struct ssdstate *ssd, unsigned int phy_block_nb, int valid)
 	return SUCCESS;
 }
 
-int INCREASE_INVALID_OOB_ENTRY_COUNT(struct ssdstate *ssd, unsigned int phy_block_nb)
+int INCREASE_INVALID_OOB_ENTRY_COUNT(struct ssdstate *ssd, unsigned int phy_block_nb, int8_t in_nvram)
 {
 	struct ssdconf *sc = &(ssd->ssdparams);
 	void* NVRAM_OOB_TABLE = ssd->NVRAM_OOB_TABLE;
@@ -1310,8 +1477,16 @@ int INCREASE_INVALID_OOB_ENTRY_COUNT(struct ssdstate *ssd, unsigned int phy_bloc
 
 	NVRAM_OOB_seg* OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE + phy_block_nb;
 
-	OOB_seg->invalid_entry++;
-	ssd->stat_total_invalid_entry++;
+	if(in_nvram == 1)
+	{
+		OOB_seg->invalid_entry++;
+		ssd->stat_total_invalid_entry++;
+	}
+	else if(in_nvram == 2)
+	{
+		OOB_seg->invalid_entry_page++;
+	}
+	
 
 	return SUCCESS;
 } 

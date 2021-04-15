@@ -21,19 +21,23 @@
 #define DATA_BITS_NVME 12
 #define PI_BYTES_NVME 24
 
-#define TOTAL_OOB_SEG 81920 // 80MB NVRAM
+#define TOTAL_OOB_SEG 40960 // 40MB NVRAM
 #define OOB_ENTRY_PER_SEG 64   // 1KB segment
 #define OOB_ENTRY_BYTES 16
-#define INVALID_ENTRY_THRE 0.05 // NVRAM GC can be triggered if the invalid remapping entries > 5%
+#define INVALID_ENTRY_THRE 0.15 // NVRAM GC can be triggered if the invalid remapping entries > 15% 
 #define NVRAM_READ_DELAY 50 // 50ns / 64B (PCM)
 #define NVRAM_WRITE_DELAY 500 // 500ns /64B (PCM)
+
+#define OOB_ENTRY_PER_PAGE 256 // 4096 / 16 = 256
+#define MAX_OOB_SB 3 // 3 falsh superblocks for remapping log
+#define MAX_FLASH_OOB_PAGE 30720 // 3 falsh superblocks for remapping log (640*16*3)
 
 // #define X_FTL
 #define WAL_WRITE 100
 #define CP_WRITE 102
 
-#define DUP_RATIO 50  // 50% duplicate data
-#define UNIQUE_PAGE_NB 4200000 // valid lpn count * (100 - DUP_RATIO) / 100
+#define DUP_RATIO 30  // 10% duplicate data
+#define UNIQUE_PAGE_NB 5740000 // valid lpn count * (100 - DUP_RATIO) / 100
 
 #ifdef DUP_RATIO
 #define FING_DELAY 32000 // delay of calculating the fingerprint: 32000ns
@@ -56,7 +60,7 @@
 #define STAT_COUNT
 
 #ifdef STAT_COUNT
-#define STAT_OUTPUT_FILE ("/home/nvm/copy_remap_seg1K_80M_fileserver.csv")
+#define STAT_OUTPUT_FILE ("/home/nvm/dedup_remap_move_seg1K_40M_rocksdb.csv")
 #define PRINT_INTERVAL 5	//statistic data print interval (s)
 #endif
 

@@ -459,7 +459,7 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
 
             // printf("ckpt incresse s_lpn = %ld, s_ppn = %ld, d_lpn = %ld\n", s_lpn, s_ppn, d_lpn);
 
-            if((INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS))
+            if(INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS)
 			{
                 USE_REMAP(ssd, CALC_BLOCK(ssd, s_ppn));
                 UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);

@@ -113,7 +113,7 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 
 	int64_t svb_start = get_ts_in_ns();
 
-	int64_t NVRAM_OOB_read_time = 0, blocking_time = 0;
+	int64_t NVRAM_OOB_read_time = 0, FLASH_OOB_read_time = 0, blocking_time = 0, blocking_time_nvram = 0, blocking_time_flash_oob = 0;
 	void* NVRAM_OOB_TABLE = ssd->NVRAM_OOB_TABLE;
 	NVRAM_OOB_seg* OOB_seg;
 	int entry_nb = 0;
@@ -143,11 +143,16 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 	}
 
 	OOB_seg = (NVRAM_OOB_seg*)NVRAM_OOB_TABLE + victim_phy_block_nb;
-	if(flag == 1 && OOB_seg->alloc_seg > 0)
+	if(flag == 1 && (OOB_seg->alloc_seg > 0 || OOB_seg->alloc_page > 0))
 	{
 		entry_nb = OOB_seg->alloc_seg * OOB_ENTRY_PER_SEG - OOB_seg->free_entry;
 		NVRAM_OOB_read_time = (int64_t)entry_nb * OOB_ENTRY_BYTES * NVRAM_READ_DELAY / 64;
-		blocking_time = UPDATE_NVRAM_TS(ssd, victim_phy_block_nb, NVRAM_OOB_read_time);
+		FLASH_OOB_read_time = (int64_t)((OOB_seg->alloc_page + SB_BLK_NB - 1) / SB_BLK_NB) * sc->CELL_READ_DELAY + (int64_t)OOB_seg->total_entry_page * OOB_ENTRY_BYTES / 64 * 50;
+
+		blocking_time_nvram = UPDATE_NVRAM_TS(ssd, victim_phy_block_nb, NVRAM_OOB_read_time);
+		blocking_time_flash_oob = UPDATE_FLASH_OOB_TS(ssd, FLASH_OOB_read_time);
+
+		blocking_time = (blocking_time_nvram > blocking_time_flash_oob) ? blocking_time_nvram : blocking_time_flash_oob;
 	}
 
 	int64_t cp_start = get_ts_in_ns();
@@ -171,12 +176,16 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 	if(blocking_time > 0)
 	{
 		UPDATE_FLASH_TS(ssd, blocking_time);
-		UPDATE_NVRAM_OOB(ssd, victim_phy_block_nb, 0);  // per superblock item
 
 		ssd->stat_GCRNVRAM_print++;
 		ssd->stat_GCRNVRAM_delay_print += blocking_time;
 		ssd->stat_avg_GCRNVRAM_delay = ssd->stat_GCRNVRAM_delay_print / ssd->stat_GCRNVRAM_print;
 	}
+
+	UPDATE_NVRAM_OOB(ssd, victim_phy_block_nb, 0);  // per superblock item
+	OOB_seg->alloc_page = 0;
+	OOB_seg->total_entry_page = 0;
+	OOB_seg->invalid_entry_page = 0;
 
     for(victim_phy_flash_nb=0; victim_phy_flash_nb<SB_BLK_NB; victim_phy_flash_nb++)
 	{
@@ -275,6 +284,11 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 						}
 						else
 						{
+							if(ssd->stat_total_alloc_seg >= TOTAL_OOB_SEG)
+							{
+								MOVE_ENTRY_TO_FLASH(ssd, victim_phy_block_nb);
+							}
+
 							UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, new_ppn), VALID);
 							ssd->in_nvram[lpn] = 1;
 

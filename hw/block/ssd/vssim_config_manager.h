@@ -210,7 +210,7 @@ struct ssdstate {
     int g_init; // = 0;
 
     int64_t *mapping_table;
-    int8_t *in_nvram; // indicates a lpn is in the flash OOB (0) or the NVRAM segment (1)
+    int8_t *in_nvram; // indicates a lpn is in the flash page OOB (0) or the NVRAM segment (1) or the flash oob superblock (2)
 
     int* reg_io_cmd;	// READ, WRITE, ERASE
     int* reg_io_type;	// SEQ, RAN, MERGE, GC, etc..
@@ -234,6 +234,7 @@ struct ssdstate {
     void* inverse_mapping_table;
     void* block_state_table;
     void* NVRAM_OOB_TABLE; // per superblock item
+    void* FLASH_OOB_TABLE;    
     
     double* Pzipf; // zipf概率累加，下标为unique page content
     int64_t* fingerprint; // unique page content到ppn对应关系的数组
@@ -381,6 +382,7 @@ struct ssdstate {
     int64_t *chnl_next_avail_time;
     int64_t *chip_next_avail_time;
     int64_t *nvram_next_avail_time;
+    int64_t flash_oob_next_avail_time;
 
 	/*add by hao, copy from femu-oc
 	*/

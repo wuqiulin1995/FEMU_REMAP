@@ -157,9 +157,9 @@ int UPDATE_OLD_PAGE_MAPPING(struct ssdstate *ssd, int64_t lpn)
         if(DECREASE_INVERSE_MAPPING(ssd, old_ppn, lpn) == SUCCESS)
         {
             UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, old_ppn), CALC_BLOCK(ssd, old_ppn), CALC_PAGE(ssd, old_ppn), INVALID);
-            if(ssd->in_nvram[lpn] == 1)
+            if(ssd->in_nvram[lpn] == 1 || ssd->in_nvram[lpn] == 2)
             {
-                INCREASE_INVALID_OOB_ENTRY_COUNT(ssd, CALC_BLOCK(ssd, old_ppn));
+                INCREASE_INVALID_OOB_ENTRY_COUNT(ssd, CALC_BLOCK(ssd, old_ppn), ssd->in_nvram[lpn]);
             }
         }
 	}
