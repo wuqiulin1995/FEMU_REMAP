@@ -171,12 +171,12 @@ int SB_GARBAGE_COLLECTION(struct ssdstate *ssd, int chip)
 	if(blocking_time > 0)
 	{
 		UPDATE_FLASH_TS(ssd, blocking_time);
-		UPDATE_NVRAM_OOB(ssd, victim_phy_block_nb, 0);  // per superblock item
 
 		ssd->stat_GCRNVRAM_print++;
 		ssd->stat_GCRNVRAM_delay_print += blocking_time;
 		ssd->stat_avg_GCRNVRAM_delay = ssd->stat_GCRNVRAM_delay_print / ssd->stat_GCRNVRAM_print;
 	}
+	UPDATE_NVRAM_OOB(ssd, victim_phy_block_nb, 0);  // per superblock item
 
     for(victim_phy_flash_nb=0; victim_phy_flash_nb<SB_BLK_NB; victim_phy_flash_nb++)
 	{
