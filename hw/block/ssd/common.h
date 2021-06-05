@@ -21,7 +21,7 @@
 #define DATA_BITS_NVME 12
 #define PI_BYTES_NVME 24
 
-#define TOTAL_OOB_SEG 81920 // 80MB NVRAM
+#define TOTAL_OOB_SEG 20480 // 20MB NVRAM
 #define OOB_ENTRY_PER_SEG 64   // 1KB segment
 #define OOB_ENTRY_BYTES 16
 #define INVALID_ENTRY_THRE 0.05 // NVRAM GC can be triggered if the invalid remapping entries > 5%
@@ -32,7 +32,7 @@
 #define WAL_WRITE 100
 #define CP_WRITE 102
 
-#define DUP_RATIO 50  // 50% duplicate data
+// #define DUP_RATIO 50  // 50% duplicate data
 #define UNIQUE_PAGE_NB 4200000 // valid lpn count * (100 - DUP_RATIO) / 100
 
 #ifdef DUP_RATIO
@@ -56,7 +56,7 @@
 #define STAT_COUNT
 
 #ifdef STAT_COUNT
-#define STAT_OUTPUT_FILE ("/home/nvm/copy_remap_seg1K_80M_fileserver.csv")
+#define STAT_OUTPUT_FILE ("/home/nvm/copy_remap_seg1K_20M_oltp.csv")
 #define PRINT_INTERVAL 5	//statistic data print interval (s)
 #endif
 

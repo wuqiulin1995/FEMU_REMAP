@@ -444,9 +444,12 @@ int femu_discard_process(struct ssdstate *ssd, uint32_t length, int64_t sector_n
 int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t len, uint32_t ope)
 {
     int64_t *mapping_table = ssd->mapping_table;
+    struct ssdconf *sc = &(ssd->ssdparams);
+    int64_t SECTORS_PER_PAGE = sc->SECTORS_PER_PAGE;
     uint64_t s_lpn = src_lpn, d_lpn = dst_lpn;
     int64_t s_ppn = -1;
     int32_t remain = 0;
+    struct request_meta request1;
 
     // printf("remap process s_lpn = %lu, d_lpn = %lu, len = %u, ope = %u\n", s_lpn, d_lpn, len, ope);
 
@@ -459,22 +462,34 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
 
             // printf("ckpt incresse s_lpn = %ld, s_ppn = %ld, d_lpn = %ld\n", s_lpn, s_ppn, d_lpn);
 
-            if((INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS))
-			{
-                USE_REMAP(ssd, CALC_BLOCK(ssd, s_ppn));
-                UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);
-                UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, s_ppn), VALID);
-            
-                UPDATE_OLD_PAGE_MAPPING(ssd, d_lpn);
-                mapping_table[d_lpn] = s_ppn;
-                ssd->in_nvram[d_lpn] = 1;
+            if(USE_REMAP(ssd, CALC_BLOCK(ssd, s_ppn)) == SUCCESS)
+            {
+                if((INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS))
+                { 
+                    UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);
+                    UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, s_ppn), VALID);
+                
+                    UPDATE_OLD_PAGE_MAPPING(ssd, d_lpn);
+                    mapping_table[d_lpn] = s_ppn;
+                    ssd->in_nvram[d_lpn] = 1;
 
-                // UPDATE_OLD_PAGE_MAPPING(ssd, s_lpn);
-				// mapping_table[s_lpn] = -1;
+                    // UPDATE_OLD_PAGE_MAPPING(ssd, s_lpn);
+                    // mapping_table[s_lpn] = -1;
 
-				ssd->stat_remap_cnt++;
-                ssd->stat_reduced_write++;
-			}
+                    ssd->stat_remap_cnt++;
+                    ssd->stat_reduced_write++;
+                }
+            }
+            else
+            {
+                request1.sector_nb = d_lpn * SECTORS_PER_PAGE;
+                request1.length = SECTORS_PER_PAGE;
+                request1.lpns_info[0].flag = 0;
+                request1.lpns_info[0].h_lpn = -1;
+                request1.lpns_info[0].tx_id = -1;
+
+                _FTL_WRITE(ssd, &request1);
+            }
 
             s_lpn++;
             d_lpn++;
@@ -488,19 +503,31 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
 
             // printf("copy incresse s_lpn = %ld, s_ppn = %ld, d_lpn = %ld\n", s_lpn, s_ppn, d_lpn);
 
-			if(INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS)
-			{
-                USE_REMAP(ssd, CALC_BLOCK(ssd, s_ppn));
-                UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);
-                UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, s_ppn), VALID);
+            if(USE_REMAP(ssd, CALC_BLOCK(ssd, s_ppn)) == SUCCESS)
+            {
+                if(INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS)
+                {
+                    UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);
+                    UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, s_ppn), VALID);
 
-                UPDATE_OLD_PAGE_MAPPING(ssd, d_lpn);
-                mapping_table[d_lpn] = s_ppn;
-                ssd->in_nvram[d_lpn] = 1;
+                    UPDATE_OLD_PAGE_MAPPING(ssd, d_lpn);
+                    mapping_table[d_lpn] = s_ppn;
+                    ssd->in_nvram[d_lpn] = 1;
 
-				ssd->stat_remap_cnt++;
-                ssd->stat_reduced_write++;
-			}
+                    ssd->stat_remap_cnt++;
+                    ssd->stat_reduced_write++;
+                }
+            }
+            else
+            {
+                request1.sector_nb = d_lpn * SECTORS_PER_PAGE;
+                request1.length = SECTORS_PER_PAGE;
+                request1.lpns_info[0].flag = 0;
+                request1.lpns_info[0].h_lpn = -1;
+                request1.lpns_info[0].tx_id = -1;
+
+                _FTL_WRITE(ssd, &request1);
+            }
 
             s_lpn++;
             d_lpn++;
@@ -514,23 +541,38 @@ int SSD_REMAP(struct ssdstate *ssd, uint64_t src_lpn, uint64_t dst_lpn, uint32_t
 
             // printf("move incresse s_lpn = %ld, s_ppn = %ld, d_lpn = %ld\n", s_lpn, s_ppn, d_lpn);
 
-			if(INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS)
-			{
-                USE_REMAP(ssd, CALC_BLOCK(ssd, s_ppn));
-                UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);
-                UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, s_ppn), VALID);
+            if(USE_REMAP(ssd, CALC_BLOCK(ssd, s_ppn)) == SUCCESS)
+            {
+                if(INCREASE_INVERSE_MAPPING(ssd, s_ppn, d_lpn) == SUCCESS)
+                {
+                    UPDATE_BLOCK_STATE_ENTRY(ssd, CALC_FLASH(ssd, s_ppn), CALC_BLOCK(ssd, s_ppn), CALC_PAGE(ssd, s_ppn), VALID);
+                    UPDATE_NVRAM_OOB(ssd, CALC_BLOCK(ssd, s_ppn), VALID);
 
-                UPDATE_OLD_PAGE_MAPPING(ssd, d_lpn);
-                mapping_table[d_lpn] = s_ppn;
-                ssd->in_nvram[d_lpn] = 1;
+                    UPDATE_OLD_PAGE_MAPPING(ssd, d_lpn);
+                    mapping_table[d_lpn] = s_ppn;
+                    ssd->in_nvram[d_lpn] = 1;
+
+                    UPDATE_OLD_PAGE_MAPPING(ssd, s_lpn);				
+                    mapping_table[s_lpn] = -1;
+
+                    ssd->stat_remap_cnt++;
+                    ssd->stat_reduced_write++;
+                }
+            }
+            else
+            {
+                request1.sector_nb = d_lpn * SECTORS_PER_PAGE;
+                request1.length = SECTORS_PER_PAGE;
+                request1.lpns_info[0].flag = 0;
+                request1.lpns_info[0].h_lpn = -1;
+                request1.lpns_info[0].tx_id = -1;
+
+                _FTL_WRITE(ssd, &request1);
 
                 UPDATE_OLD_PAGE_MAPPING(ssd, s_lpn);				
-				mapping_table[s_lpn] = -1;
-
-				ssd->stat_remap_cnt++;
-                ssd->stat_reduced_write++;
-			}
-
+                mapping_table[s_lpn] = -1;
+            }
+			
             s_lpn++;
             d_lpn++;
         }
