@@ -1003,6 +1003,10 @@ int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, un
 			{
 				ssd->stat_ppn_n21++;
 			}
+			if(valid_array[phy_page_nb] == 15)
+			{
+				ssd->stat_ref_16++;
+			}
 			valid_array[phy_page_nb]++;
 			if(valid_array[phy_page_nb] > ssd->max_valid_array)
 				ssd->max_valid_array = valid_array[phy_page_nb];
@@ -1045,6 +1049,10 @@ int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, un
 				{
 					ssd->stat_ppn_n21--;
 				}
+				if(valid_array[phy_page_nb] == 16)
+				{
+					ssd->stat_ref_16--;
+				}
 				valid_array[phy_page_nb]--;
 			}	
 			ssd->stat_lpn_valid--;
@@ -1064,6 +1072,10 @@ int UPDATE_BLOCK_STATE_ENTRY(struct ssdstate *ssd, unsigned int phy_flash_nb, un
 			if(valid_array[phy_page_nb] > 1)
 			{
 				ssd->stat_ppn_n21--;
+			}
+			if(valid_array[phy_page_nb] >= 16)
+			{
+				ssd->stat_ref_16--;
 			}
 			ssd->stat_lpn_valid -= valid_array[phy_page_nb];
 			valid_array[phy_page_nb] = 0;

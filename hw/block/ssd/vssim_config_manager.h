@@ -276,6 +276,7 @@ struct ssdstate {
     uint64_t stat_lpn_valid;
     int32_t max_valid_array;
     uint32_t stat_use_remap_fail;
+    uint64_t stat_ref_16;
     
     uint64_t stat_total_alloc_seg;
     uint64_t stat_total_OOB_entry;

@@ -19,11 +19,11 @@
 
 #define DUP_RATIO 30  // 30% duplicate data
 #define UNIQUE_PAGE_NB 4550000 // lpn_valid * (100 - dup_ratio) / 100
-#define MAX_ENTRY_NB 131072 // 40MB 2621440 80MB 5242880 120MB 7864320 10MB 655360 5MB 327680 2MB 131072
+#define MAX_ENTRY_NB 7864320 // 40MB 2621440 80MB 5242880 120MB 7864320 10MB 655360 5MB 327680 2MB 131072
 
 #define STAT_COUNT
 #ifdef STAT_COUNT
-#define STAT_OUTPUT_FILE ("/home/nvm/dedup_remap_log_2M_fiorandw.csv")
+#define STAT_OUTPUT_FILE ("/home/wuqiulin/dedup_remap_log_120M_oltp.csv")
 #define PRINT_INTERVAL 5	//输出的时间间隔（秒）
 #endif
 
